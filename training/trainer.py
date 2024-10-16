@@ -476,7 +476,7 @@ class Trainer:
 
         if self.steps[phase] % self.logging_conf.log_scalar_frequency == 0:
             self.logger.log(
-                loss_log_str,
+                loss_log_str,   
                 loss,
                 self.steps[phase],
             )
@@ -541,6 +541,11 @@ class Trainer:
                     f.write(json.dumps(outs) + "\n")
 
             # Save checkpoint before validating
+
+
+            # should have saving strategy before save
+
+
             self.save_checkpoint(self.epoch + 1)
 
             del dataloader
