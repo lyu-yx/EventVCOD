@@ -48,6 +48,27 @@ def dice_loss(inputs, targets, num_objects, loss_on_multimask=False):
         return loss / num_objects
     return loss.sum() / num_objects
 
+def structure_loss(inputs, targets):
+    """
+    Structure loss (ref: F3Net-AAAI-2020)
+    Args:
+        inputs: A float tensor of arbitrary shape.
+                The predictions for each example.
+        targets: A float tensor with the same shape as inputs. Stores the binary
+                 classification label for each element in inputs
+                (0 for the negative class and 1 for the positive class).
+    Returns:
+        Structure loss tensor
+    """
+    weit = 1 + 5 * torch.abs(F.avg_pool2d(targets, kernel_size=31, stride=1, padding=15) - targets)
+    wbce = F.binary_cross_entropy_with_logits(pred, targets, reduce='none')
+    wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
+
+    pred = torch.sigmoid(pred)
+    inter = ((pred * targets) * weit).sum(dim=(2, 3))
+    union = ((pred + targets) * weit).sum(dim=(2, 3))
+    wiou = 1 - (inter + 1) / (union - inter + 1)
+    return (wbce + wiou).mean()
 
 def sigmoid_focal_loss(
     inputs,
@@ -155,6 +176,7 @@ class MultiStepMultiMasksAndIous(nn.Module):
         assert "loss_mask" in self.weight_dict
         assert "loss_dice" in self.weight_dict
         assert "loss_iou" in self.weight_dict
+        assert "loss_struc" in self.weight_dict
         if "loss_class" not in self.weight_dict:
             self.weight_dict["loss_class"] = 0.0
 
@@ -205,7 +227,7 @@ class MultiStepMultiMasksAndIous(nn.Module):
         assert len(object_score_logits_list) == len(ious_list)
 
         # accumulate the loss over prediction steps
-        losses = {"loss_mask": 0, "loss_dice": 0, "loss_iou": 0, "loss_class": 0}
+        losses = {"loss_mask": 0, "loss_dice": 0, "loss_iou": 0, "loss_struc": 0, "loss_class": 0}
         for src_masks, ious, object_score_logits in zip(
             src_masks_list, ious_list, object_score_logits_list
         ):
@@ -226,11 +248,13 @@ class MultiStepMultiMasksAndIous(nn.Module):
             num_objects,
             alpha=self.focal_alpha,
             gamma=self.focal_gamma,
-            loss_on_multimask=True,
+            loss_on_multimask=False,
         )
         loss_multidice = dice_loss(
-            src_masks, target_masks, num_objects, loss_on_multimask=True
+            src_masks, target_masks, num_objects, loss_on_multimask=False
         )
+        loss_multistruc = structure_loss(src_masks, target_masks)
+
         if not self.pred_obj_scores:
             loss_class = torch.tensor(
                 0.0, dtype=loss_multimask.dtype, device=loss_multimask.device
@@ -258,22 +282,27 @@ class MultiStepMultiMasksAndIous(nn.Module):
             target_masks,
             ious,
             num_objects,
-            loss_on_multimask=True,
+            loss_on_multimask=False,
             use_l1_loss=self.iou_use_l1_loss,
         )
         assert loss_multimask.dim() == 2
         assert loss_multidice.dim() == 2
         assert loss_multiiou.dim() == 2
+        assert loss_multistruc.dim() == 2
+
+
         if loss_multimask.size(1) > 1:
             # take the mask indices with the smallest focal + dice loss for back propagation
             loss_combo = (
                 loss_multimask * self.weight_dict["loss_mask"]
                 + loss_multidice * self.weight_dict["loss_dice"]
+                + loss_multistruc * self.weight_dict["loss_struc"]
             )
             best_loss_inds = torch.argmin(loss_combo, dim=-1)
             batch_inds = torch.arange(loss_combo.size(0), device=loss_combo.device)
             loss_mask = loss_multimask[batch_inds, best_loss_inds].unsqueeze(1)
             loss_dice = loss_multidice[batch_inds, best_loss_inds].unsqueeze(1)
+            loss_struc = loss_multistruc[batch_inds, best_loss_inds].unsqueeze(1)
             # calculate the iou prediction and slot losses only in the index
             # with the minimum loss for each mask (to be consistent w/ SAM)
             if self.supervise_all_iou:
@@ -284,16 +313,19 @@ class MultiStepMultiMasksAndIous(nn.Module):
             loss_mask = loss_multimask
             loss_dice = loss_multidice
             loss_iou = loss_multiiou
+            loss_struc = loss_multistruc
 
         # backprop focal, dice and iou loss only if obj present
         loss_mask = loss_mask * target_obj
         loss_dice = loss_dice * target_obj
         loss_iou = loss_iou * target_obj
+        loss_struc = loss_struc * target_obj
 
         # sum over batch dimension (note that the losses are already divided by num_objects)
         losses["loss_mask"] += loss_mask.sum()
         losses["loss_dice"] += loss_dice.sum()
         losses["loss_iou"] += loss_iou.sum()
+        losses["loss_struc"] += loss_struc.sum()
         losses["loss_class"] += loss_class
 
     def reduce_loss(self, losses):

@@ -5,7 +5,7 @@ scratch:
   train_batch_size: 1
   num_train_workers: 10
   num_frames: 8
-  max_num_objects: 3
+  max_num_objects: 1
   base_lr: 5.0e-6
   vision_lr: 3.0e-06
   phases_per_epoch: 1
@@ -13,9 +13,9 @@ scratch:
 
 dataset:
   # PATHS to Dataset
-  img_folder: /fsx-onevision/shared/data/academic_vos_data/MOSE/train/JPEGImages # PATH to MOSE JPEGImages folder
-  gt_folder: /fsx-onevision/shared/data/academic_vos_data/MOSE/train/Annotations/  # PATH to MOSE Annotations folder
-  file_list_txt: training/assets/MOSE_sample_train_list.txt # Optional PATH to filelist containing a subset of videos to be used for training
+  # img_folder: /fsx-onevision/shared/data/academic_vos_data/MOSE/train/JPEGImages # PATH to MOSE JPEGImages folder
+  # gt_folder: /fsx-onevision/shared/data/academic_vos_data/MOSE/train/Annotations/  # PATH to MOSE Annotations folder
+  # file_list_txt: training/assets/MOSE_sample_train_list.txt # Optional PATH to filelist containing a subset of videos to be used for training
   multiplier: 2
 
 # Video transforms
@@ -201,29 +201,45 @@ trainer:
 
   data:
     train:
-      _target_: training.dataset.sam2_datasets.TorchTrainMixedDataset
-      phases_per_epoch: ${scratch.phases_per_epoch}
-      batch_sizes:
-        - ${scratch.train_batch_size}
+      _target_: training.dataset.sam2_datasets.TorchTrainMixedDataset 
+      phases_per_epoch: ${scratch.phases_per_epoch} # Chunks a single epoch into smaller phases
+      batch_sizes: # List of batch sizes corresponding to each dataset
+      - 1 # Batch size of dataset 1
+      # - ${bs2} # Batch size of dataset 2
 
+      # datasets:
+      # SA1B as an example of an image dataset
+      # - _target_: training.dataset.vos_dataset.VOSDataset
+      #   training: true
+      #   video_dataset:
+      #     _target_: training.dataset.vos_raw_dataset.PNGRawDataset
+      #     img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
+      #     gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
+      #     file_list_txt: None
+      #   sampler:
+      #     _target_: training.dataset.vos_sampler.RandomUniformSampler
+      #     num_frames: 1
+      #     max_num_objects: ${max_num_objects_per_image}
+      #   transforms: ${image_transforms}
+
+      # SA-V as an example of a video dataset
       datasets:
-        - _target_: training.dataset.utils.RepeatFactorWrapper
-          dataset:
-            _target_: training.dataset.utils.ConcatDataset
-            datasets:
-            - _target_: training.dataset.vos_dataset.VOSDataset
-              transforms: ${vos.train_transforms}
-              training: true
-              video_dataset:
-                _target_: training.dataset.vos_raw_dataset.PNGRawDataset
-                img_folder: ${dataset.img_folder}
-                gt_folder: ${dataset.gt_folder}
-                file_list_txt: ${dataset.file_list_txt}
-              sampler:
-                _target_: training.dataset.vos_sampler.RandomUniformSampler
-                num_frames: ${scratch.num_frames}
-                max_num_objects: ${scratch.max_num_objects}
-              multiplier: ${dataset.multiplier}
+        - _target_: training.dataset.vos_dataset.VOSDataset
+          transforms: ${vos.train_transforms}
+          training: true
+          video_dataset:
+            _target_: training.dataset.vos_raw_dataset.VCODDataset
+            img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
+            gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
+            file_list_txt: 0
+            # ann_every: 4
+          sampler:
+            _target_: training.dataset.vos_sampler.RandomUniformSampler
+            num_frames: ${scratch.num_frames} # Number of frames per video
+            max_num_objects: ${scratch.max_num_objects}
+            reverse_time_prob: 0 # probability to reverse video
+          # transforms: ${video_transforms}
+          
       shuffle: True
       num_workers: ${scratch.num_train_workers}
       pin_memory: True
@@ -232,6 +248,7 @@ trainer:
         _target_: training.utils.data_utils.collate_fn
         _partial_: true
         dict_key: all
+
 
   optim:
     amp:
@@ -283,6 +300,7 @@ trainer:
       _target_: training.loss_fns.MultiStepMultiMasksAndIous
       weight_dict:
         loss_mask: 20
+        loss_struc: 20
         loss_dice: 1
         loss_iou: 1
         loss_class: 1
@@ -308,7 +326,7 @@ trainer:
   # initialize from a SAM 2 checkpoint
   checkpoint:
     save_dir: ${launcher.experiment_log_dir}/checkpoints
-    save_freq: 0 # 0 only last checkpoint is saved.
+    save_freq: 10 # 0 only last checkpoint is saved.
     model_weight_initializer:
       _partial_: True
       _target_: training.utils.checkpoint_utils.load_state_dict_into_model
