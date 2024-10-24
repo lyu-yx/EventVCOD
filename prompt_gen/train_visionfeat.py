@@ -17,7 +17,7 @@ from torch import optim
 from torchvision.utils import make_grid
 # customized libraries
 import metrics as Measure
-from prompt_generator import PromptGenerator as Network
+from prompt_gen.prompt_generator_visionfeat import PromptGenerator as Network
 from prompt_gen.utils import clip_gradient
 from dataset import get_loader, get_test_loader
 
@@ -107,8 +107,9 @@ def total_loss(pred_bbox, target_bbox, λ1=1.0, λ2=1.0, λ3=0.5):
 
     # Total weighted loss
     total_loss = λ1 * loss_regression + λ2 * loss_iou + λ3 * loss_corner
+    batch_size = pred_bbox.size(0)
 
-    return total_loss
+    return total_loss / batch_size
 
 
 
@@ -132,7 +133,6 @@ def train(train_loader, model, optimizer, epoch, save_path, writer):
 
             preds = model(images)
 
-            
             loss = total_loss(preds, bbox)
 
             loss.backward()
@@ -196,26 +196,18 @@ def val(test_loader, model, epoch, save_path, writer):
     model.eval()
     with torch.no_grad():
         test_loss = 0
+        total_samples = 0
         for i in range(test_loader.size):
-            image, gt, bbox, _ = test_loader.load_data()
-
-            
-
-            gt = np.asarray(gt, np.float32)
-
+            image, gt, bbox, _, _= test_loader.load_data()
             image = image.cuda()
 
             res = model(image)
 
-            test_loss =+ total_loss(res, bbox)
+            loss = total_loss(res, bbox)
+            total_loss += loss.item() * bbox.size(0)  # Accumulate the loss, scaling by batch size
+            total_samples += bbox.size(0)  # Accumulate the total number of samples
 
-            
-
-           
-
-      
-
-        cur_score = test_loss / test_loader.size
+        cur_score = total_loss / total_samples
 
         if epoch == 1:
             best_score = cur_score
@@ -256,7 +248,7 @@ if __name__ == '__main__':
     parser.add_argument('--val_root', type=str, default='./dataset/TestDataset/CAMO/',
                         help='the test rgb images root')
     parser.add_argument('--gpu_id', type=str, default='0', help='train use gpu')
-    parser.add_argument('--save_path', type=str, default='./prompt_gen/Promptgen/',
+    parser.add_argument('--save_path', type=str, default='./prompt_gen/Promptgen_visionfeat/',
                         help='the path to save model and log')
     opt = parser.parse_args()
 
