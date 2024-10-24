@@ -161,7 +161,7 @@ def get_loader(image_root, gt_root, batchsize, trainsize, shuffle=True, num_work
                                   pin_memory=pin_memory)
     
     # Wrapping the data loader with tqdm for progress bar
-    data_loader = tqdm(data_loader, desc="Training", total=len(data_loader), ncols=100)
+    # data_loader = tqdm(data_loader, desc="Training", total=len(data_loader), ncols=100)
     
     return data_loader
 
@@ -174,7 +174,7 @@ def get_test_loader(image_root, gt_root, batchsize, testsize, shuffle=False, num
                                   pin_memory=pin_memory)
     
     # Wrapping the data loader with tqdm for progress bar
-    data_loader = tqdm(data_loader, desc="Testing", total=len(data_loader), ncols=100)
+    # data_loader = tqdm(data_loader, desc="Testing", total=len(data_loader), ncols=100)
     
     return data_loader
 

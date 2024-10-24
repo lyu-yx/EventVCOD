@@ -311,15 +311,15 @@ class PromptGenerator(nn.Module):
 
     def forward(self, x):
         # context path (encoder)
-        out = self.image_encoder(x)
+        visual_feats = self.image_encoder(x)
         #endpoints = self.context_encoder.extract_endpoints(x)
-        vision_features = out["vision_features"]
-        vision_pos_enc = out["vision_pos_enc"]
-        backbone_fpn = out["backbone_fpn"]
+        vision_features = visual_feats["vision_features"]
+        vision_pos_enc = visual_feats["vision_pos_enc"]
+        backbone_fpn = visual_feats["backbone_fpn"]
 
-        self.prompt_gen(vision_features)
+        prompt_out = self.prompt_gen(vision_features)
     
-        return out
+        return prompt_out
 
 
 if __name__ == '__main__':
