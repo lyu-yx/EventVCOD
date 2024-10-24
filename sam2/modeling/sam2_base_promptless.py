@@ -10,7 +10,6 @@ import torch.nn.functional as F
 
 from torch.nn.init import trunc_normal_
 
-from sam2.modeling.sam.box_predictor import BoxPredictorKAN
 from sam2.modeling.sam.mask_decoder import MaskDecoder
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
 from sam2.modeling.sam.transformer import TwoWayTransformer
@@ -20,7 +19,7 @@ from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_fr
 NO_OBJ_SCORE = -1024.0
 
 
-class SAM2Base(torch.nn.Module):
+class SAM2BaseVCOD(torch.nn.Module):
     def __init__(
         self,
         image_encoder,
@@ -94,11 +93,6 @@ class SAM2Base(torch.nn.Module):
         # extra arguments used to construct the SAM mask decoder; if not None, it should be a dict of kwargs to be passed into `MaskDecoder` class.
         sam_mask_decoder_extra_args=None,
         compile_image_encoder: bool = False,
-
-        prompt_predict_embedding_dim = 256,
-        prompt_predict_num_keypoints = 16,
-        prompt_predict_hidden_dim = 16,
-        prompt_predict_num_boxes = 1,
     ):
         super().__init__()
 
@@ -163,9 +157,6 @@ class SAM2Base(torch.nn.Module):
         self.use_multimask_token_for_obj_ptr = use_multimask_token_for_obj_ptr
         self.iou_prediction_use_sigmoid = iou_prediction_use_sigmoid
 
-        # Part 3.1: Prompt Generator (bbox)
-        self.box_predictor = BoxPredictorKAN(prompt_predict_embedding_dim, prompt_predict_num_keypoints, prompt_predict_hidden_dim, prompt_predict_num_boxes)
-
         # Part 4: SAM-style prompt encoder (for both mask and point inputs)
         # and SAM-style mask decoder for the final mask output
         self.image_size = image_size
@@ -220,15 +211,15 @@ class SAM2Base(torch.nn.Module):
 
         # build PromptEncoder and MaskDecoder from SAM
         # (their hyperparameters like `mask_in_chans=16` are from SAM code)
-        self.sam_prompt_encoder = PromptEncoder(
-            embed_dim=self.sam_prompt_embed_dim,
-            image_embedding_size=(
-                self.sam_image_embedding_size,
-                self.sam_image_embedding_size,
-            ),
-            input_image_size=(self.image_size, self.image_size),
-            mask_in_chans=16,
-        )
+        # self.sam_prompt_encoder = PromptEncoder(
+        #     embed_dim=self.sam_prompt_embed_dim,
+        #     image_embedding_size=(
+        #         self.sam_image_embedding_size,
+        #         self.sam_image_embedding_size,
+        #     ),
+        #     input_image_size=(self.image_size, self.image_size),
+        #     mask_in_chans=16,
+        # )
         self.sam_mask_decoder = MaskDecoder(
             num_multimask_outputs=3,
             transformer=TwoWayTransformer(
@@ -316,9 +307,6 @@ class SAM2Base(torch.nn.Module):
         assert backbone_features.size(2) == self.sam_image_embedding_size
         assert backbone_features.size(3) == self.sam_image_embedding_size
 
-        # why no bbox input here?
-        
-
         # a) Handle point prompts
         if point_inputs is not None:
             sam_point_coords = point_inputs["point_coords"]
@@ -349,14 +337,12 @@ class SAM2Base(torch.nn.Module):
             # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None
 
-        
-
-
-        sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
-            points=(sam_point_coords, sam_point_labels),
-            boxes=None,
-            masks=sam_mask_prompt,
-        )
+        # no need of prompt embedding here
+        # sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
+        #     points=(sam_point_coords, sam_point_labels),
+        #     boxes=None,
+        #     masks=sam_mask_prompt,
+        # )
         (
             low_res_multimasks,
             ious,
@@ -365,8 +351,8 @@ class SAM2Base(torch.nn.Module):
         ) = self.sam_mask_decoder(
             image_embeddings=backbone_features,
             image_pe=self.sam_prompt_encoder.get_dense_pe(),
-            sparse_prompt_embeddings=sparse_embeddings,
-            dense_prompt_embeddings=dense_embeddings,
+            # sparse_prompt_embeddings=sparse_embeddings,
+            # dense_prompt_embeddings=dense_embeddings,
             multimask_output=multimask_output,
             repeat_image=False,  # the image is already batched
             high_res_features=high_res_features,
