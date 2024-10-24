@@ -9,6 +9,7 @@ import sys
 sys.path.append('')
 from datetime import datetime
 from tensorboardX import SummaryWriter
+from tqdm import tqdm
 
 import torch
 import torch.nn.functional as F
@@ -306,7 +307,7 @@ if __name__ == '__main__':
 
     cosine_schedule = optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=20, eta_min=1e-5)
     print(">>> start train...")
-    for epoch in range(1, opt.epoch):
+    for epoch in tqdm(range(1, opt.epoch)):
         # schedule
         cosine_schedule.step()
         writer.add_scalar('learning_rate', cosine_schedule.get_lr()[0], global_step=epoch)
