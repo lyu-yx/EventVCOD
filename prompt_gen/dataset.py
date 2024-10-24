@@ -6,6 +6,7 @@ from PIL import Image, ImageEnhance
 import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
+from tqdm import tqdm
 
 
 def cv_random_flip(img, label):
@@ -158,16 +159,23 @@ def get_loader(image_root, gt_root, batchsize, trainsize, shuffle=True, num_work
                                   shuffle=shuffle,
                                   num_workers=num_workers,
                                   pin_memory=pin_memory)
+    
+    # Wrapping the data loader with tqdm for progress bar
+    data_loader = tqdm(data_loader, desc="Training", total=len(data_loader), ncols=100)
+    
     return data_loader
-
 
 def get_test_loader(image_root, gt_root, batchsize, testsize, shuffle=False, num_workers=4, pin_memory=True):
     dataset = TestDataset(image_root=image_root, gt_root=gt_root, testsize=testsize)
     data_loader = data.DataLoader(dataset=dataset,
-                             batch_size=batchsize,
-                             shuffle=shuffle,
-                             num_workers=num_workers,
-                             pin_memory=pin_memory)
+                                  batch_size=batchsize,
+                                  shuffle=shuffle,
+                                  num_workers=num_workers,
+                                  pin_memory=pin_memory)
+    
+    # Wrapping the data loader with tqdm for progress bar
+    data_loader = tqdm(data_loader, desc="Testing", total=len(data_loader), ncols=100)
+    
     return data_loader
 
 # test dataset and loader
