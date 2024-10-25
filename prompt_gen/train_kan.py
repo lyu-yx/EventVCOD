@@ -247,7 +247,7 @@ if __name__ == '__main__':
     parser.add_argument('--val_root', type=str, default='./dataset/TestDataset/CAMO/',
                         help='the test rgb images root')
     parser.add_argument('--gpu_id', type=str, default='0', help='train use gpu')
-    parser.add_argument('--save_path', type=str, default='./save/prompt_gen/Promptgen_visionfeat/',
+    parser.add_argument('--save_path', type=str, default='./save/prompt_gen/Promptgen_kan/',
                         help='the path to save model and log')
     opt = parser.parse_args()
 
