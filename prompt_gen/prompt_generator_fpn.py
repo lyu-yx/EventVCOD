@@ -317,7 +317,7 @@ class PromptGenerator(nn.Module):
         vision_pos_enc = visual_feats["vision_pos_enc"]
         backbone_fpn = visual_feats["backbone_fpn"]
 
-        prompt_out = self.prompt_gen(vision_features)
+        prompt_out = self.prompt_gen(backbone_fpn)
     
         return prompt_out
 

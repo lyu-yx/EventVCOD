@@ -191,31 +191,30 @@ def val(test_loader, model, epoch, save_path, writer):
     validation function
     """
     global test_loss, best_score, best_epoch, best_metric_dict
-    
     metrics_dict = dict()
-
+    model.cuda() #change
     model.eval()
     with torch.no_grad():
         test_loss = 0
         total_samples = 0
-        for i in range(test_loader.size):
-            image, gt, bbox, _, _= test_loader.load_data()
+        for image, gt, bbox, name in test_loader:
+            
             image = image.cuda()
+            bbox = bbox.cuda()
 
             res = model(image)
 
             loss = total_loss(res, bbox)
-            total_loss += loss.item() * bbox.size(0)  # Accumulate the loss, scaling by batch size
+            test_loss += loss.item() * bbox.size(0)  # Accumulate the loss, scaling by batch size
             total_samples += bbox.size(0)  # Accumulate the total number of samples
 
-        cur_score = total_loss / total_samples
+        cur_score = test_loss / total_samples
 
         if epoch == 1:
             best_score = cur_score
-            print('[Cur Epoch: {}] Metrics (mxFm={}, Sm={}, mxEm={})'.format(
-                epoch, metrics_dict['mxFm'], metrics_dict['Sm'], metrics_dict['mxEm']))
-            logging.info('[Cur Epoch: {}] Metrics (mxFm={}, Sm={}, mxEm={})'.format(
-                epoch, metrics_dict['mxFm'], metrics_dict['Sm'], metrics_dict['mxEm']))
+            
+            print('{} Epoch [{:03d}/{:03d}], Best_score: {:.4f}, Curr_score: {:.4f}'.format(datetime.now(), epoch, opt.epoch, best_score, cur_score))
+            logging.info('[Test Info]:Epoch [{:03d}/{:03d}], Best_score: {:.4f}, Curr_score: {:.4f}'.format(datetime.now(), epoch, opt.epoch, best_score, cur_score))
         else:
             if cur_score > best_score:
                 best_metric_dict = metrics_dict
@@ -225,10 +224,9 @@ def val(test_loader, model, epoch, save_path, writer):
                 print('>>> save state_dict successfully! best epoch is {}.'.format(epoch))
             else:
                 print('>>> not find the best epoch -> continue training ...')
-            print('[Cur Epoch: {}, loss: {}]  [Best Epoch: {}, best loss: {}]'.format(
-                epoch, best_epoch, cur_score, best_score))
-            logging.info('[Cur Epoch: {}, loss: {}]  [Best Epoch: {}, best loss: {}]'.format(
-                epoch, best_epoch, cur_score, best_score))
+            print('{} Epoch [{:03d}/{:03d}], Best_score: {:.4f}, Curr_score: {:.4f}'.format(datetime.now(), epoch, opt.epoch, best_score, cur_score))
+            logging.info('[Test Info]:Epoch [{:03d}/{:03d}], Best_score: {:.4f}, Curr_score: {:.4f}'.format(datetime.now(), epoch, opt.epoch, best_score, cur_score))
+
 
 
 if __name__ == '__main__':
@@ -249,7 +247,7 @@ if __name__ == '__main__':
     parser.add_argument('--val_root', type=str, default='./dataset/TestDataset/CAMO/',
                         help='the test rgb images root')
     parser.add_argument('--gpu_id', type=str, default='0', help='train use gpu')
-    parser.add_argument('--save_path', type=str, default='./prompt_gen/Promptgen_fpn/',
+    parser.add_argument('--save_path', type=str, default='./save/prompt_gen/Promptgen_fpn/',
                         help='the path to save model and log')
     opt = parser.parse_args()
 

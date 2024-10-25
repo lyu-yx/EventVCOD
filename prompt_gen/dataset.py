@@ -102,7 +102,7 @@ class CamObjDataset(data.Dataset):
         image, gt = randomCrop(image, gt)
         image, gt = randomRotation(image, gt)
         image = colorEnhance(image)
-        gt = randomPeper(gt)
+        # gt = randomPeper(gt)
 
         # Transform to tensor
         image = self.img_transform(image)
@@ -201,15 +201,15 @@ class TestDataset:
             transforms.ToTensor()
         ])
         self.size = len(self.images)
-        self.index = 0
+        
 
-    def load_data(self):
+    def __getitem__(self, index):
         # Load image and mask
-        image = self.rgb_loader(self.images[self.index])
-        gt = self.binary_loader(self.gts[self.index])
+        image = self.rgb_loader(self.images[index])
+        gt = self.binary_loader(self.gts[index])
 
         # Apply transformations
-        image = self.transform(image).unsqueeze(0)  # Add batch dimension for the image
+        image = self.transform(image)  # Add batch dimension for the image
         gt = self.gt_transform(gt)
 
         # Extract bounding box from ground truth mask
@@ -217,19 +217,16 @@ class TestDataset:
         bbox_tensor = torch.tensor(bbox, dtype=torch.float)
 
         # Get image name for saving or logging results
-        name = os.path.basename(self.images[self.index])
+        name = os.path.basename(self.images[index])
         if name.endswith('.jpg'):
             name = name.split('.jpg')[0] + '.png'
 
-        # Increment index for the next image, wrap around if needed
-        self.index += 1
-        self.index = self.index % self.size
-
         # Load image for post-processing (used for visualization or saving purposes)
-        image_for_post = self.rgb_loader(self.images[self.index])
-        image_for_post = image_for_post.resize(gt.size)
+        # image_for_post = self.rgb_loader(self.images[self.index])
+        # image_for_post = image_for_post.resize(gt.size)
 
-        return image, gt, bbox_tensor, name, np.array(image_for_post)
+        return image, gt, bbox_tensor, name
+    
 
     def get_bounding_box(self, mask):
         # Convert mask tensor to numpy
