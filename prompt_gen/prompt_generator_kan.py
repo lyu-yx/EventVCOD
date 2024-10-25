@@ -327,7 +327,7 @@ class PromptGenerator(nn.Module):
         vision_features = visual_feats["vision_features"]
 
         vision_features = self.feature_reducer(vision_features)
-        flattened_features = vision_features.view(vision_features.size(0), -1)
+        flattened_features = vision_features.reshape(vision_features.size(0), -1)
         normalized_features = (flattened_features - flattened_features.mean(dim=0)) / (flattened_features.std(dim=0) + 1e-6)
         normalized_features = torch.clamp(normalized_features, -1, 1)
         # Pass through KAN

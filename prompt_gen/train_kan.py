@@ -132,7 +132,7 @@ def train(train_loader, model, optimizer, epoch, save_path, writer):
             gts = gts.cuda()
             bbox = bbox.cuda()
 
-            preds = model(images, update_grid=True)
+            preds = model(images)
 
             loss = total_loss(preds, bbox)
 
@@ -234,7 +234,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--epoch', type=int, default=200, help='epoch number')
-    parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
+    parser.add_argument('--lr', type=float, default=1e-2, help='learning rate')
     parser.add_argument('--batchsize', type=int, default=16, help='training batch size')
     parser.add_argument('--trainsize', type=int, default=1024, help='training dataset size')
     parser.add_argument('--clip', type=float, default=0.5, help='gradient clipping margin')
