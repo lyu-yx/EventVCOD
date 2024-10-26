@@ -244,7 +244,7 @@ if __name__ == '__main__':
     parser.add_argument('--load', type=str, default=None, help='train from checkpoints')
     parser.add_argument('--train_root', type=str, default='./dataset/TrainDataset/',
                         help='the training rgb images root')
-    parser.add_argument('--val_root', type=str, default='./dataset/TestDataset/CAMO/',
+    parser.add_argument('--val_root', type=str, default='./dataset/TestDataset/COD10K/',
                         help='the test rgb images root')
     parser.add_argument('--gpu_id', type=str, default='0', help='train use gpu')
     parser.add_argument('--save_path', type=str, default='./save/prompt_gen/Promptgen_fpn/',
@@ -277,8 +277,8 @@ if __name__ == '__main__':
 
     # load data
     print('load data...')
-    train_loader = get_loader(image_root=opt.train_root + 'Imgs/',
-                              gt_root=opt.train_root + 'GT/',
+    train_loader = get_loader(image_root=opt.train_root + 'Imgs_Videos/',
+                              gt_root=opt.train_root + 'GT_Imgs_Videos/',
                               batchsize=opt.batchsize,
                               trainsize=opt.trainsize,
                               num_workers=4)
