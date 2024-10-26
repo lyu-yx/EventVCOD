@@ -22,6 +22,7 @@ from omegaconf.listconfig import ListConfig
 from training.dataset.vos_segment_loader import (
     JSONSegmentLoader,
     MultiplePNGSegmentLoader,
+    MultipleJPGSegmentLoader,
     PalettisedPNGSegmentLoader,
     SA1BSegmentLoader,
 )
@@ -40,6 +41,7 @@ class VOSVideo:
     video_name: str
     video_id: int
     frames: List[VOSFrame]
+    events: List[VOSFrame]
 
     def __len__(self):
         return len(self.frames)
@@ -151,6 +153,7 @@ class VCODDataset(VOSRawDataset):
         self,
         img_folder,
         gt_folder,
+        eventflow_folder,
         file_list_txt=None,
         excluded_videos_list_txt=None,
         sample_rate=1,
@@ -161,6 +164,7 @@ class VCODDataset(VOSRawDataset):
     ):
         self.img_folder = img_folder
         self.gt_folder = gt_folder
+        self.eventflow_folder = eventflow_folder
         self.sample_rate = sample_rate
         self.is_palette = is_palette
         self.single_object_mode = single_object_mode
@@ -216,8 +220,9 @@ class VCODDataset(VOSRawDataset):
             video_frame_root = os.path.join(self.img_folder, video_name, 'Frame')
 
         video_mask_root = os.path.join(self.gt_folder, video_name, 'GT')
+        
         # negative, postive or red_blue_visualization
-        video_eventflow_root = os.path.join(self.gt_folder, video_name, 'Eventflow', 'red_blue_visualization')
+        video_eventflow_root = os.path.join(self.eventflow_folder, video_name, 'Eventflow', 'red_blue_visualization')
 
         if self.is_palette:
             segment_loader = PalettisedPNGSegmentLoader(video_mask_root)
@@ -225,15 +230,26 @@ class VCODDataset(VOSRawDataset):
             segment_loader = MultiplePNGSegmentLoader(
                 video_mask_root, self.single_object_mode
             )
-
+            
         all_frames = sorted(glob.glob(os.path.join(video_frame_root, "*.jpg")))
+        all_eventflows = sorted(glob.glob(os.path.join(video_eventflow_root, "*.jpg")))
+
         if self.truncate_video > 0:
             all_frames = all_frames[: self.truncate_video]
+            all_eventflows = all_eventflows[: self.truncate_video]
         frames = []
+        events = []
+        
         for _, fpath in enumerate(all_frames[:: self.sample_rate]):
             fid = int(os.path.basename(fpath).split(".")[0])
             frames.append(VOSFrame(fid, image_path=fpath))
-        video = VOSVideo(video_name, idx, frames)
+
+        for _, fpath in enumerate(all_eventflows[:: self.sample_rate]):
+            fid = int(os.path.basename(fpath).split(".")[0])
+            events.append(VOSFrame(fid, image_path=fpath))
+
+
+        video = VOSVideo(video_name, idx, frames, events)
         return video, segment_loader
 
     def __len__(self):

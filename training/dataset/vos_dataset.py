@@ -81,10 +81,16 @@ class VOSDataset(VisionDataset):
         Constructs a VideoDatapoint sample to pass to transforms
         """
         sampled_frames = sampled_frms_and_objs.frames
+        sampled_events = sampled_frms_and_objs.events
         sampled_object_ids = sampled_frms_and_objs.object_ids
 
         images = []
+        events = []
+
         rgb_images = load_images(sampled_frames)
+        rgb_events = load_images(sampled_events)
+
+        
         # Iterate over the sampled frames and store their rgb data and object data (bbox, segment)
         for frame_idx, frame in enumerate(sampled_frames):
             w, h = rgb_images[frame_idx].size
@@ -122,8 +128,49 @@ class VOSDataset(VisionDataset):
                         segment=segment,
                     )
                 )
+
+
+
+                # Iterate over the sampled frames and store their rgb data and object data (bbox, segment)
+        for event_idx, event in enumerate(sampled_events):
+            w, h = rgb_events[event_idx].size
+            events.append(
+                Frame(
+                    data=rgb_events[event_idx],
+                    objects=[],
+                )
+            )
+            # We load the gt segments associated with the current frame
+            if isinstance(segment_loader, JSONSegmentLoader):
+                segments = segment_loader.load(
+                    event.frame_idx, obj_ids=sampled_object_ids
+                )
+            else:
+                segments = segment_loader.load(event.frame_idx)
+            for obj_id in sampled_object_ids:
+                # Extract the segment
+                if obj_id in segments:
+                    assert (
+                        segments[obj_id] is not None
+                    ), "None targets are not supported"
+                    # segment is uint8 and remains uint8 throughout the transforms
+                    segment = segments[obj_id].to(torch.uint8)
+                else:
+                    # There is no target, we either use a zero mask target or drop this object
+                    if not self.always_target:
+                        continue
+                    segment = torch.zeros(h, w, dtype=torch.uint8)
+
+                events[event_idx].objects.append(
+                    Object(
+                        object_id=obj_id,
+                        frame_index=frame.frame_idx,
+                        segment=segment,
+                    )
+                )
         return VideoDatapoint(
             frames=images,
+            events=events,
             video_id=video.video_id,
             size=(h, w),
         )

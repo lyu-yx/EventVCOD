@@ -228,6 +228,87 @@ class MultiplePNGSegmentLoader:
         return
 
 
+class MultipleJPGSegmentLoader:
+    def __init__(self, video_jpg_root, single_object_mode=False):
+        """
+        video_jpg_root: the folder contains all the masks stored in jpg
+        single_object_mode: whether to load only a single object at a time
+        """
+        self.video_jpg_root = video_jpg_root
+        self.single_object_mode = single_object_mode
+        # read a mask to know the resolution of the video
+        if self.single_object_mode:
+            tmp_mask_path = glob.glob(os.path.join(video_jpg_root, "*.jpg"))[0]
+        else:
+            tmp_mask_path = glob.glob(os.path.join(video_jpg_root, "*", "*.jpg"))[0]
+        tmp_mask = np.array(PILImage.open(tmp_mask_path))
+        self.H = tmp_mask.shape[0]
+        self.W = tmp_mask.shape[1]
+        if self.single_object_mode:
+            self.obj_id = (
+                int(video_jpg_root.split("/")[-1]) + 1
+            )  # offset by 1 as bg is 0
+        else:
+            self.obj_id = None
+
+    def load(self, frame_id):
+        if self.single_object_mode:
+            return self._load_single_jpg(frame_id)
+        else:
+            return self._load_multiple_jpgs(frame_id)
+
+    def _load_single_jpg(self, frame_id):
+        """
+        load single jpg from the disk (path: f'{self.obj_id}/{frame_id:05d}.jpg')
+        Args:
+            frame_id: int, define the mask path
+        Return:
+            binary_segments: dict
+        """
+        mask_path = os.path.join(self.video_jpg_root, f"{frame_id:05d}.jpg")
+        binary_segments = {}
+
+        if os.path.exists(mask_path):
+            mask = np.array(PILImage.open(mask_path))
+        else:
+            # if jpg doesn't exist, empty mask
+            mask = np.zeros((self.H, self.W), dtype=bool)
+        binary_segments[self.obj_id] = torch.from_numpy(mask > 0)
+        return binary_segments
+
+    def _load_multiple_jpgs(self, frame_id):
+        """
+        load multiple jpg masks from the disk (path: f'{obj_id}/{frame_id:05d}.jpg')
+        Args:
+            frame_id: int, define the mask path
+        Return:
+            binary_segments: dict
+        """
+        # get the path
+        all_objects = sorted(glob.glob(os.path.join(self.video_jpg_root, "*")))
+        num_objects = len(all_objects)
+        assert num_objects > 0
+
+        # load the masks
+        binary_segments = {}
+        for obj_folder in all_objects:
+            # obj_folder is {video_name}/{obj_id}, obj_id is specified by the name of the folder
+            obj_id = int(obj_folder.split("/")[-1])
+            obj_id = obj_id + 1  # offset 1 as bg is 0
+            mask_path = os.path.join(obj_folder, f"{frame_id:05d}.jpg")
+            if os.path.exists(mask_path):
+                mask = np.array(PILImage.open(mask_path))
+            else:
+                mask = np.zeros((self.H, self.W), dtype=bool)
+            binary_segments[obj_id] = torch.from_numpy(mask > 0)
+
+        return binary_segments
+
+    def __len__(self):
+        # Implement length calculation logic based on jpg files
+        # For example, count the number of jpgs in the main directory
+        return
+
 class LazySegments:
     """
     Only decodes segments that are actually used.

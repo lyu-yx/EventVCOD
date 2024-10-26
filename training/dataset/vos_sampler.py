@@ -16,6 +16,7 @@ MAX_RETRIES = 1000
 @dataclass
 class SampledFramesAndObjects:
     frames: List[int]
+    events: List[int]
     object_ids: List[int]
 
 
@@ -39,7 +40,7 @@ class RandomUniformSampler(VOSSampler):
         self.max_num_objects = max_num_objects
         self.reverse_time_prob = reverse_time_prob
 
-    def sample(self, video, segment_loader, epoch=None):
+    def sample(self, video, segment_loader, eventflow_loader, epoch=None):
 
         for retry in range(MAX_RETRIES):
             if len(video.frames) < self.num_frames:
@@ -55,6 +56,8 @@ class RandomUniformSampler(VOSSampler):
             # Get first frame object ids
             visible_object_ids = []
             loaded_segms = segment_loader.load(frames[0].frame_idx)
+            loaded_eventflows = eventflow_loader.load(frames[0].frame_idx)
+
             if isinstance(loaded_segms, LazySegments):
                 # LazySegments for SA1BRawDataset
                 visible_object_ids = list(loaded_segms.keys())
@@ -75,7 +78,7 @@ class RandomUniformSampler(VOSSampler):
             visible_object_ids,
             min(len(visible_object_ids), self.max_num_objects),
         )
-        return SampledFramesAndObjects(frames=frames, object_ids=object_ids)
+        return SampledFramesAndObjects(frames=frames, events=events, object_ids=object_ids)
 
 
 class EvalSampler(VOSSampler):

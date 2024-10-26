@@ -107,6 +107,7 @@ class VideoDatapoint:
     """Refers to an image/video and all its annotations"""
 
     frames: List[Frame]
+    events: List[Frame]
     video_id: int
     size: Tuple[int, int]
 
