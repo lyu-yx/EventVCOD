@@ -45,6 +45,7 @@ class BatchedVideoDatapoint:
     """
 
     img_batch: torch.FloatTensor
+    event_batch: torch.FloatTensor
     obj_to_frame_idx: torch.IntTensor
     masks: torch.BoolTensor
     metadata: BatchedVideoMetaData
@@ -85,6 +86,14 @@ class BatchedVideoDatapoint:
         """
 
         return self.img_batch.transpose(0, 1).flatten(0, 1)
+    
+    @property
+    def flat_event_batch(self) -> torch.FloatTensor:
+        """
+        Returns a flattened img_batch_tensor of shape [(B*T)xCxHxW]
+        """
+
+        return self.event_batch.transpose(0, 1).flatten(0, 1)
 
 
 @dataclass
@@ -122,10 +131,17 @@ def collate_fn(
         dict_key (str): A string key used to identify the batch.
     """
     img_batch = []
+    event_batch = []
+
     for video in batch:
         img_batch += [torch.stack([frame.data for frame in video.frames], dim=0)]
+    
+    for video in batch:
+        event_batch += [torch.stack([event.data for event in video.events], dim=0)]
 
     img_batch = torch.stack(img_batch, dim=0).permute((1, 0, 2, 3, 4))
+    event_batch = torch.stack(event_batch, dim=0).permute((1, 0, 2, 3, 4))
+
     T = img_batch.shape[0]
     # Prepare data structures for sequential processing. Per-frame processing but batched across videos.
     step_t_objects_identifier = [[] for _ in range(T)]

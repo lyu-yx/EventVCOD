@@ -62,7 +62,7 @@ trainer:
   seed_value: 123
 
   model:
-    _target_: training.model.sam2_vcod.SAM2TrainVCOD
+    _target_: training.model.sam2_vcod_prompt_generator.SAM2TrainVCODPromptGenerator
     image_encoder:
       _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
       scalp: 1

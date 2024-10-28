@@ -107,12 +107,13 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
     def forward(self, input: BatchedVideoDatapoint):
         if self.training or not self.forward_backbone_per_frame_for_eval:
             # precompute image features on all frames before tracking
-            backbone_out = self.forward_image(input.flat_img_batch)
+            backbone_out_img = self.forward_image(input.flat_img_batch)
+            backbone_out_event = self.forward_image(input.flat_event_batch)
         else:
             # defer image feature computation on a frame until it's being tracked
-            backbone_out = {"backbone_fpn": None, "vision_pos_enc": None}
-        backbone_out = self.prepare_prompt_inputs(backbone_out, input)
-        previous_stages_out = self.forward_tracking(backbone_out, input)
+            backbone_out_img = {"backbone_fpn": None, "vision_pos_enc": None}
+        backbone_out_img = self.prepare_prompt_inputs(backbone_out_img, input)
+        previous_stages_out = self.forward_tracking(backbone_out_img, input)
 
         return previous_stages_out
 
