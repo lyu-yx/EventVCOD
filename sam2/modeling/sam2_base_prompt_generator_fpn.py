@@ -10,11 +10,13 @@ import torch.nn.functional as F
 
 from torch.nn.init import trunc_normal_
 
-from sam2.modeling.sam.box_predictor import BoxPredictorKAN
+
 from sam2.modeling.sam.mask_decoder import MaskDecoder
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
+
+from prompt_gen.prompt_generator_fpn import PromptGenerator
 
 # a large negative value as a placeholder score for missing objects
 NO_OBJ_SCORE = -1024.0
@@ -164,7 +166,7 @@ class SAM2Base(torch.nn.Module):
         self.iou_prediction_use_sigmoid = iou_prediction_use_sigmoid
 
         # Part 3.1: Prompt Generator (bbox)
-        self.box_predictor = BoxPredictorKAN(prompt_predict_embedding_dim, prompt_predict_num_keypoints, prompt_predict_hidden_dim, prompt_predict_num_boxes)
+        self.box_predictor = PromptGenerator(prompt_predict_embedding_dim, prompt_predict_num_keypoints, prompt_predict_hidden_dim, prompt_predict_num_boxes)
 
         # Part 4: SAM-style prompt encoder (for both mask and point inputs)
         # and SAM-style mask decoder for the final mask output
@@ -350,12 +352,16 @@ class SAM2Base(torch.nn.Module):
             sam_mask_prompt = None
 
         
+        bbox = self.box_predictor(backbone_features)
+        bbox = torch.tensor(bbox, device=device)
 
-
+        # sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
+        #     points=(sam_point_coords, sam_point_labels),
+        #     boxes=bbox,
+        #     masks=sam_mask_prompt,
+        # )
         sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
-            points=(sam_point_coords, sam_point_labels),
-            boxes=None,
-            masks=sam_mask_prompt,
+            boxes=bbox
         )
         (
             low_res_multimasks,

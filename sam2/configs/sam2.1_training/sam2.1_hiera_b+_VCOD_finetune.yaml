@@ -231,13 +231,15 @@ trainer:
             _target_: training.dataset.vos_raw_dataset.VCODDataset
             img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
             gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
-            file_list_txt: 0
+            eventflow_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
+            # file_list_txt: None
             # ann_every: 4
           sampler:
             _target_: training.dataset.vos_sampler.RandomUniformSampler
             num_frames: ${scratch.num_frames} # Number of frames per video
             max_num_objects: ${scratch.max_num_objects}
             reverse_time_prob: 0 # probability to reverse video
+          multiplier: ${dataset.multiplier}
           # transforms: ${video_transforms}
           
       shuffle: True
