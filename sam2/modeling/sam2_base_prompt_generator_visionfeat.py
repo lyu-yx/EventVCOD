@@ -360,8 +360,16 @@ class SAM2Base(torch.nn.Module):
         #     boxes=bbox,
         #     masks=sam_mask_prompt,
         # )
+
+        # sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
+        #     points=(sam_point_coords, sam_point_labels),
+        #     boxes=bbox,
+        #     masks=sam_mask_prompt,
+        # )
         sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
-            boxes=bbox
+            points=None,
+            boxes=bbox,
+            masks=None
         )
         (
             low_res_multimasks,

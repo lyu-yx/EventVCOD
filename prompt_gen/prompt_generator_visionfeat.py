@@ -293,10 +293,10 @@ class PromptGenerator(nn.Module):
         #                     fpn_top_down_levels=[2, 3], fpn_interp_model='nearest')
 
         # self.image_encoder = ImageEncoder(trunk=self.trunk, neck=self.neck, scalp=1)
-        # self.ckpt_pth = ckpt_pth
+        self.ckpt_pth = ckpt_pth
         
     
-        checkpoint = torch.load(self.ckpt_pth, map_location="cuda")
+        # checkpoint = torch.load(self.ckpt_pth, map_location="cuda")
         # Extract the state_dict of the image_encoder part
         # image_encoder_state_dict = {k[len("image_encoder."):]: v for k, v in checkpoint['model'].items() if k.startswith("image_encoder.")}
         # # Load the state_dict into the image encoder
