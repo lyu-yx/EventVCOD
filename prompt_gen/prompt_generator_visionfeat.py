@@ -285,39 +285,39 @@ class PromptGenerator(nn.Module):
         super(PromptGenerator, self).__init__()
         
 
-        self.trunk = Hiera(embed_dim=112, num_heads=2, drop_path_rate=0.1)
+        # self.trunk = Hiera(embed_dim=112, num_heads=2, drop_path_rate=0.1)
 
-        self.neck_position_encoding = PositionEmbeddingSine(num_pos_feats=256)
-        self.neck = FpnNeck(position_encoding=self.neck_position_encoding, d_model=256, 
-                            backbone_channel_list=[896, 448, 224, 112], 
-                            fpn_top_down_levels=[2, 3], fpn_interp_model='nearest')
+        # self.neck_position_encoding = PositionEmbeddingSine(num_pos_feats=256)
+        # self.neck = FpnNeck(position_encoding=self.neck_position_encoding, d_model=256, 
+        #                     backbone_channel_list=[896, 448, 224, 112], 
+        #                     fpn_top_down_levels=[2, 3], fpn_interp_model='nearest')
 
-        self.image_encoder = ImageEncoder(trunk=self.trunk, neck=self.neck, scalp=1)
-        self.ckpt_pth = ckpt_pth
+        # self.image_encoder = ImageEncoder(trunk=self.trunk, neck=self.neck, scalp=1)
+        # self.ckpt_pth = ckpt_pth
         
     
         checkpoint = torch.load(self.ckpt_pth, map_location="cuda")
         # Extract the state_dict of the image_encoder part
-        image_encoder_state_dict = {k[len("image_encoder."):]: v for k, v in checkpoint['model'].items() if k.startswith("image_encoder.")}
-        # Load the state_dict into the image encoder
-        self.image_encoder.load_state_dict(image_encoder_state_dict)
-        print("Image encoder weights loaded successfully.")
+        # image_encoder_state_dict = {k[len("image_encoder."):]: v for k, v in checkpoint['model'].items() if k.startswith("image_encoder.")}
+        # # Load the state_dict into the image encoder
+        # self.image_encoder.load_state_dict(image_encoder_state_dict)
+        # print("Image encoder weights loaded successfully.")
         
-        for param in self.image_encoder.parameters():
-            param.requires_grad = False
+        # for param in self.image_encoder.parameters():
+        #     param.requires_grad = False
 
         self.prompt_gen = KANBBoxPredictorVisionFeat(input_dim=256, hidden_dim=128, num_components=4)
         # self.prompt_gen = KANBBoxPredictorFPN(input_dim=256, hidden_dim=128, num_components=4)
 
     def forward(self, x):
         # context path (encoder)
-        visual_feats = self.image_encoder(x)
-        #endpoints = self.context_encoder.extract_endpoints(x)
-        vision_features = visual_feats["vision_features"]
-        vision_pos_enc = visual_feats["vision_pos_enc"]
-        backbone_fpn = visual_feats["backbone_fpn"]
+        # visual_feats = self.image_encoder(x)
+        # #endpoints = self.context_encoder.extract_endpoints(x)
+        # vision_features = visual_feats["vision_features"]
+        # vision_pos_enc = visual_feats["vision_pos_enc"]
+        # backbone_fpn = visual_feats["backbone_fpn"]
 
-        prompt_out = self.prompt_gen(vision_features)
+        prompt_out = self.prompt_gen(x)
     
         return prompt_out
 
