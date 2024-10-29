@@ -68,9 +68,11 @@ trainer:
       scalp: 1
       trunk:
         _target_: sam2.modeling.backbones.hieradet.Hiera
-        embed_dim: 112
-        num_heads: 2
-        drop_path_rate: 0.1
+        embed_dim: 96
+        num_heads: 1
+        stages: [1, 2, 11, 2]
+        global_att_blocks: [7, 10, 13]
+        window_pos_embed_bkg_spatial_size: [7, 7]
       neck:
         _target_: sam2.modeling.backbones.image_encoder.FpnNeck
         position_encoding:
@@ -80,7 +82,7 @@ trainer:
           scale: null
           temperature: 10000
         d_model: 256
-        backbone_channel_list: [896, 448, 224, 112]
+        backbone_channel_list: [768, 384, 192, 96]
         fpn_top_down_levels: [2, 3]  # output level 0 and 1 directly use the backbone features
         fpn_interp_model: nearest
 
@@ -178,11 +180,11 @@ trainer:
 
     ####### Training specific params #######
     # box/point input and corrections
-    prob_to_use_pt_input_for_train: 1
+    prob_to_use_pt_input_for_train: 0.5
     prob_to_use_pt_input_for_eval: 0.0
-    prob_to_use_box_input_for_train: 1  # 0.5*0.5 = 0.25 prob to use box instead of points
+    prob_to_use_box_input_for_train: 0.5  # 0.5*0.5 = 0.25 prob to use box instead of points
     prob_to_use_box_input_for_eval: 0.0
-    prob_to_sample_from_gt_for_train: 0  # with a small prob, sampling correction points from GT mask instead of prediction errors
+    prob_to_sample_from_gt_for_train: 0.1  # with a small prob, sampling correction points from GT mask instead of prediction errors
     num_frames_to_correct_for_train: 2  # iteratively sample on random 1~2 frames (always include the first frame)
     num_frames_to_correct_for_eval: 1  # only iteratively sample on first frame
     rand_frames_to_correct_for_train: True  # random #init-cond-frame ~ 2
@@ -338,13 +340,13 @@ trainer:
 
       state_dict:
         _target_: training.utils.checkpoint_utils.load_checkpoint_and_apply_kernels
-        checkpoint_path: ./checkpoints/sam2.1_hiera_base_plus.pt # PATH to SAM 2.1 checkpoint
+        checkpoint_path: ./checkpoints/sam2.1_hiera_small.pt # PATH to SAM 2.1 checkpoint
         ckpt_state_dict_keys: ['model']
 
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_fpn/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_s_fpn/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
