@@ -135,9 +135,8 @@ def collate_fn(
 
     for video in batch:
         img_batch += [torch.stack([frame.data for frame in video.frames], dim=0)]
-    
-    for video in batch:
         event_batch += [torch.stack([event.data for event in video.events], dim=0)]
+    
 
     img_batch = torch.stack(img_batch, dim=0).permute((1, 0, 2, 3, 4))
     event_batch = torch.stack(event_batch, dim=0).permute((1, 0, 2, 3, 4))

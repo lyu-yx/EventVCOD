@@ -49,20 +49,13 @@ class RandomUniformSampler(VOSSampler):
                 )
             start = random.randrange(0, len(video.frames) - self.num_frames + 1)
             frames = [video.frames[start + step] for step in range(self.num_frames)]
-            if random.uniform(0, 1) < self.reverse_time_prob:
-                # Reverse time
-                frames = frames[::-1]
-
-            
-            if len(video.events) < self.num_frames:
-                raise Exception(
-                    f"Cannot sample {self.num_frames} frames from video {video.video_name} as it only has {len(video.frames)} annotated frames."
-                )
-            start = random.randrange(0, len(video.events) - self.num_frames + 1)
             events = [video.events[start + step] for step in range(self.num_frames)]
             if random.uniform(0, 1) < self.reverse_time_prob:
                 # Reverse time
+                frames = frames[::-1]
                 events = events[::-1]
+
+            
 
             # Get first frame object ids
             visible_object_ids = []

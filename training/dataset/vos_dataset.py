@@ -86,7 +86,7 @@ class VOSDataset(VisionDataset):
 
         images = []
         events = []
-
+        
         rgb_images = load_images(sampled_frames)
         rgb_events = load_images(sampled_events)
 
@@ -132,21 +132,21 @@ class VOSDataset(VisionDataset):
 
 
         # Iterate over the sampled frames and store their rgb data and object data (bbox, segment)
-        for event_idx, event in enumerate(sampled_events):
-            w, h = rgb_events[event_idx].size
+        for frame_idx, event in enumerate(sampled_events):
+            w, h = rgb_events[frame_idx].size
             events.append(
                 Frame(
-                    data=rgb_events[event_idx],
+                    data=rgb_events[frame_idx],
                     objects=[],
                 )
             )
             # We load the gt segments associated with the current frame
             if isinstance(segment_loader, JSONSegmentLoader):
                 segments = segment_loader.load(
-                    event.event_idx, obj_ids=sampled_object_ids
+                    event.frame_idx, obj_ids=sampled_object_ids
                 )
             else:
-                segments = segment_loader.load(event.event_idx)
+                segments = segment_loader.load(event.frame_idx)
             for obj_id in sampled_object_ids:
                 # Extract the segment
                 if obj_id in segments:
@@ -161,10 +161,10 @@ class VOSDataset(VisionDataset):
                         continue
                     segment = torch.zeros(h, w, dtype=torch.uint8)
 
-                events[event_idx].objects.append(
+                events[frame_idx].objects.append(
                     Object(
                         object_id=obj_id,
-                        frame_index=frame.event_idx,
+                        frame_index=frame.frame_idx,
                         segment=segment,
                     )
                 )
