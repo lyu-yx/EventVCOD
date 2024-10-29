@@ -166,7 +166,7 @@ class SAM2Base(torch.nn.Module):
         self.iou_prediction_use_sigmoid = iou_prediction_use_sigmoid
 
         # Part 3.1: Prompt Generator (bbox)
-        self.box_predictor = PromptGenerator(prompt_predict_embedding_dim, prompt_predict_num_keypoints, prompt_predict_hidden_dim, prompt_predict_num_boxes)
+        self.box_predictor = PromptGenerator()
 
         # Part 4: SAM-style prompt encoder (for both mask and point inputs)
         # and SAM-style mask decoder for the final mask output

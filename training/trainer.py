@@ -427,6 +427,7 @@ class Trainer:
             checkpoint = torch.load(f, map_location="cpu")
         load_state_dict_into_model(
             model=self.model,
+            strict=False,
             state_dict=checkpoint["model"],
             ignore_missing_keys=self.checkpoint_conf.skip_saving_parameters,
         )
