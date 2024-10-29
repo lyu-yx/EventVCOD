@@ -86,7 +86,7 @@ class VOSDataset(VisionDataset):
 
         images = []
         events = []
-        
+
         rgb_images = load_images(sampled_frames)
         rgb_events = load_images(sampled_events)
 
@@ -129,8 +129,6 @@ class VOSDataset(VisionDataset):
                     )
                 )
 
-
-
         # Iterate over the sampled frames and store their rgb data and object data (bbox, segment)
         for frame_idx, event in enumerate(sampled_events):
             w, h = rgb_events[frame_idx].size
@@ -168,6 +166,7 @@ class VOSDataset(VisionDataset):
                         segment=segment,
                     )
                 )
+        
         return VideoDatapoint(
             frames=images,
             events=events,

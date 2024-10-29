@@ -27,6 +27,7 @@ from training.utils.data_utils import VideoDatapoint
 def hflip(datapoint, index):
 
     datapoint.frames[index].data = F.hflip(datapoint.frames[index].data)
+    datapoint.events[index].data = F.hflip(datapoint.events[index].data)
     for obj in datapoint.frames[index].objects:
         if obj.segment is not None:
             obj.segment = F.hflip(obj.segment)
@@ -83,8 +84,12 @@ def resize(datapoint, index, size, max_size=None, square=False, v2=False):
         datapoint.frames[index].data = Fv2.resize(
             datapoint.frames[index].data, size, antialias=True
         )
+        datapoint.events[index].data = Fv2.resize(
+            datapoint.events[index].data, size, antialias=True
+        )
     else:
         datapoint.frames[index].data = F.resize(datapoint.frames[index].data, size)
+        datapoint.events[index].data = F.resize(datapoint.events[index].data, size)
 
     new_size = (
         datapoint.frames[index].data.size()[-2:][::-1]
@@ -98,6 +103,8 @@ def resize(datapoint, index, size, max_size=None, square=False, v2=False):
 
     h, w = size
     datapoint.frames[index].size = (h, w)
+    datapoint.events[index].size = (h, w)
+
     return datapoint
 
 
@@ -109,6 +116,9 @@ def pad(datapoint, index, padding, v2=False):
         datapoint.frames[index].data = F.pad(
             datapoint.frames[index].data, (0, 0, padding[0], padding[1])
         )
+        datapoint.events[index].data = F.pad(
+            datapoint.events[index].data, (0, 0, padding[0], padding[1])
+        )
         h += padding[1]
         w += padding[0]
     else:
@@ -117,10 +127,15 @@ def pad(datapoint, index, padding, v2=False):
             datapoint.frames[index].data,
             (padding[0], padding[1], padding[2], padding[3]),
         )
+        datapoint.events[index].data = F.pad(
+            datapoint.events[index].data,
+            (padding[0], padding[1], padding[2], padding[3]),
+        )
         h += padding[1] + padding[3]
         w += padding[0] + padding[2]
 
     datapoint.frames[index].size = (h, w)
+    datapoint.events[index].size = (h, w)
 
     for obj in datapoint.frames[index].objects:
         if obj.segment is not None:
@@ -193,6 +208,12 @@ class ToTensorAPI:
                 img.data = Fv2.to_image_tensor(img.data)
             else:
                 img.data = F.to_tensor(img.data)
+
+        for event in datapoint.events:
+            if self.v2:
+                event.data = Fv2.to_image_tensor(event.data)
+            else:
+                event.data = F.to_tensor(event.data)
         return datapoint
 
 
@@ -209,6 +230,13 @@ class NormalizeAPI:
                 img.data = Fv2.normalize(img.data, mean=self.mean, std=self.std)
             else:
                 img.data = F.normalize(img.data, mean=self.mean, std=self.std)
+        
+        for event in datapoint.events:
+            if self.v2:
+                event.data = Fv2.convert_image_dtype(event.data, torch.float32)
+                event.data = Fv2.normalize(event.data, mean=self.mean, std=self.std)
+            else:
+                event.data = F.normalize(event.data, mean=self.mean, std=self.std)
 
         return datapoint
 

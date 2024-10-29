@@ -184,6 +184,7 @@ def collate_fn(
     )
     return BatchedVideoDatapoint(
         img_batch=img_batch,
+        event_batch=event_batch,
         obj_to_frame_idx=obj_to_frame_idx,
         masks=masks,
         metadata=BatchedVideoMetaData(

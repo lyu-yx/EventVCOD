@@ -25,11 +25,11 @@ vos:
       transforms:
         - _target_: training.dataset.transforms.RandomHorizontalFlip
           consistent_transform: True
-        - _target_: training.dataset.transforms.RandomAffine
-          degrees: 25
-          shear: 20
-          image_interpolation: bilinear
-          consistent_transform: True
+        # - _target_: training.dataset.transforms.RandomAffine
+        #   degrees: 25
+        #   shear: 20
+        #   image_interpolation: bilinear
+        #   consistent_transform: True
         - _target_: training.dataset.transforms.RandomResizeAPI
           sizes: ${scratch.resolution}
           square: true
