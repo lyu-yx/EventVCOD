@@ -166,7 +166,7 @@ class SAM2Base(torch.nn.Module):
         self.iou_prediction_use_sigmoid = iou_prediction_use_sigmoid
 
         # Part 3.1: Prompt Generator (bbox)
-        self.box_predictor = PromptGenerator()
+        # self.box_predictor = PromptGenerator()
 
         # Part 4: SAM-style prompt encoder (for both mask and point inputs)
         # and SAM-style mask decoder for the final mask output
@@ -352,8 +352,8 @@ class SAM2Base(torch.nn.Module):
             sam_mask_prompt = None
 
         
-        bbox = self.box_predictor(backbone_features)
-        bbox = torch.tensor(bbox, device=device)
+        # bbox = self.box_predictor(backbone_features)
+        # bbox = torch.tensor(bbox, device=device)
 
         # sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
         #     points=(sam_point_coords, sam_point_labels),
@@ -361,15 +361,11 @@ class SAM2Base(torch.nn.Module):
         #     masks=sam_mask_prompt,
         # )
 
-        # sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
-        #     points=(sam_point_coords, sam_point_labels),
-        #     boxes=bbox,
-        #     masks=sam_mask_prompt,
-        # )
+        
         sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
-            points=None,
-            boxes=bbox,
-            masks=None
+            points=(sam_point_coords, sam_point_labels),
+            boxes=None,
+            masks=sam_mask_prompt,
         )
         (
             low_res_multimasks,

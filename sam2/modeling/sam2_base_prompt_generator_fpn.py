@@ -352,8 +352,8 @@ class SAM2Base(torch.nn.Module):
             sam_mask_prompt = None
 
         
-        bbox = self.box_predictor(backbone_features)
-        bbox = torch.tensor(bbox, device=device)
+        # bbox = self.box_predictor(backbone_features)
+        # bbox = torch.tensor(bbox, device=device)
 
         # sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
         #     points=(sam_point_coords, sam_point_labels),

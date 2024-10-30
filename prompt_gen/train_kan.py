@@ -18,7 +18,7 @@ from torch import optim
 from torchvision.utils import make_grid
 # customized libraries
 import metrics as Measure
-from prompt_gen.prompt_generator_kan import PromptGenerator as Network
+from prompt_gen.prompt_generator_kan_sole_train import PromptGenerator as Network
 from prompt_gen.utils import clip_gradient
 from dataset import get_loader, get_test_loader
 
