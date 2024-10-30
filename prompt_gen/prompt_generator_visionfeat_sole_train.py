@@ -314,7 +314,7 @@ class PromptGenerator(nn.Module):
         visual_feats = self.image_encoder(x)
         #endpoints = self.context_encoder.extract_endpoints(x)
         vision_features = visual_feats["vision_features"]
-        print(vision_features.size())
+        # print(vision_features.size())
 
         vision_pos_enc = visual_feats["vision_pos_enc"]
         backbone_fpn = visual_feats["backbone_fpn"]

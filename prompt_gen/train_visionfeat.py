@@ -233,12 +233,12 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--epoch', type=int, default=100, help='epoch number')
+    parser.add_argument('--epoch', type=int, default=200, help='epoch number')
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
     parser.add_argument('--batchsize', type=int, default=16, help='training batch size')
     parser.add_argument('--trainsize', type=int, default=1024, help='training dataset size')
     parser.add_argument('--clip', type=float, default=0.5, help='gradient clipping margin')
-    parser.add_argument('--decay_rate', type=float, default=0.1, help='decay rate of learning rate')
+    parser.add_argument('--decay_rate', type=float, default=0.2, help='decay rate of learning rate')
     parser.add_argument('--decay_epoch', type=int, default=50, help='every n epochs decay learning rate')
     parser.add_argument('--model', type=str, default='PromptGenerator', help='main model')
     parser.add_argument('--load', type=str, default=None, help='train from checkpoints')
@@ -306,12 +306,20 @@ if __name__ == '__main__':
     cosine_schedule = optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=20, eta_min=1e-5)
     print(">>> start train...")
     for epoch in tqdm(range(1, opt.epoch)):
-        # schedule
+        if epoch % opt.decay_epoch == 0:
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = param_group['lr'] * opt.decay_rate
+            logging.info('>>> Decayed learning rate by factor of {}, new lr: {}'.format(opt.decay_rate, optimizer.param_groups[0]['lr']))
+        
+        
         cosine_schedule.step()
-        writer.add_scalar('learning_rate', cosine_schedule.get_lr()[0], global_step=epoch)
-        logging.info('>>> current lr: {}'.format(cosine_schedule.get_lr()[0]))
+        current_lr = cosine_schedule.get_last_lr()[0]
+        writer.add_scalar('learning_rate', current_lr, global_step=epoch)
+        logging.info('>>> current lr: {}'.format(current_lr))
+
         # train
         train(train_loader, model, optimizer, epoch, save_path, writer)
+        
         if epoch > opt.epoch//2:
             # validation
             val(val_loader, model, epoch, save_path, writer)
