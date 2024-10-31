@@ -128,7 +128,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
 
         backbone_out_img = self.prepare_prompt_inputs(backbone_out_img, input)
 
-        previous_stages_out = self.forward_tracking(backbone_out_img, input)
+        previous_stages_out = self.forward_tracking(backbone_out_img, backbone_out_event, input)
 
         return previous_stages_out
 
@@ -296,7 +296,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         return backbone_out
 
     def forward_tracking(
-        self, backbone_out, input: BatchedVideoDatapoint, return_dict=False
+        self, backbone_out, backbone_out_event, input: BatchedVideoDatapoint, return_dict=False
     ):
         """Forward video tracking on each frame (and sample correction clicks)."""
         img_feats_already_computed = backbone_out["backbone_fpn"] is not None
@@ -309,6 +309,14 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 vision_pos_embeds,
                 feat_sizes,
             ) = self._prepare_backbone_features(backbone_out)
+
+            (
+                _,
+                vision_feats_event,
+                vision_pos_embeds_event,
+                feat_sizes,
+            ) = self._prepare_backbone_features(backbone_out_event)
+
 
         # Starting the stage loop
         num_frames = backbone_out["num_frames"]
@@ -329,6 +337,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 # Retrieve image features according to img_ids (if they are already computed).
                 current_vision_feats = [x[:, img_ids] for x in vision_feats]
                 current_vision_pos_embeds = [x[:, img_ids] for x in vision_pos_embeds]
+                vision_feats_event = [x[:, img_ids] for x in vision_feats_event]
+                vision_pos_embeds_event = [x[:, img_ids] for x in vision_pos_embeds_event]
             else:
                 # Otherwise, compute the image features on the fly for the given img_ids
                 # (this might be used for evaluation on long videos to avoid backbone OOM).

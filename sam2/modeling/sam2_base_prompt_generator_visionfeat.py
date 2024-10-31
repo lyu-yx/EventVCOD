@@ -709,7 +709,7 @@ class SAM2Base(torch.nn.Module):
         pix_feat_with_mem = pix_feat_with_mem.permute(1, 2, 0).view(B, C, H, W)
         return pix_feat_with_mem
     
-    def _prepare_memory_conditioned_features(
+    def _prepare_memory_conditioned_features_event(
         self,
         frame_idx,
         is_init_cond_frame,
@@ -1002,7 +1002,7 @@ class SAM2Base(torch.nn.Module):
                 track_in_reverse=track_in_reverse,
             )
 
-            pix_feat_short_long = self._prepare_memory_conditioned_features(
+            pix_feat_short_long = self._prepare_memory_conditioned_features_event(
                 frame_idx=frame_idx,
                 is_init_cond_frame=is_init_cond_frame,
                 current_vision_feats=current_vision_feats_event[-1:],
