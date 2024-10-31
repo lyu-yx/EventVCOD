@@ -117,6 +117,31 @@ trainer:
           kv_in_dim: 64
       num_layers: 4
 
+    memory_encoder:
+      _target_: sam2.modeling.memory_encoder.MemoryEncoder
+      out_dim: 64
+      position_encoding:
+        _target_: sam2.modeling.position_encoding.PositionEmbeddingSine
+        num_pos_feats: 64
+        normalize: true
+        scale: null
+        temperature: 10000
+      mask_downsampler:
+        _target_: sam2.modeling.memory_encoder.MaskDownSampler
+        kernel_size: 3
+        stride: 2
+        padding: 1
+      fuser:
+        _target_: sam2.modeling.memory_encoder.Fuser
+        layer:
+          _target_: sam2.modeling.memory_encoder.CXBlock
+          dim: 256
+          kernel_size: 7
+          padding: 3
+          layer_scale_init_value: 1e-6
+          use_dwconv: True  # depth-wise convs
+        num_layers: 2
+
     short_long_relation_attention:
       _target_: sam2.modeling.memory_attention.MemoryAttention
       d_model: 256
@@ -153,31 +178,6 @@ trainer:
     feature_fusion:
       _target_: sam2.modeling.feature_fusion.AdaptiveTemporalFusion
       in_channels: 256
-
-    memory_encoder:
-      _target_: sam2.modeling.memory_encoder.MemoryEncoder
-      out_dim: 64
-      position_encoding:
-        _target_: sam2.modeling.position_encoding.PositionEmbeddingSine
-        num_pos_feats: 64
-        normalize: true
-        scale: null
-        temperature: 10000
-      mask_downsampler:
-        _target_: sam2.modeling.memory_encoder.MaskDownSampler
-        kernel_size: 3
-        stride: 2
-        padding: 1
-      fuser:
-        _target_: sam2.modeling.memory_encoder.Fuser
-        layer:
-          _target_: sam2.modeling.memory_encoder.CXBlock
-          dim: 256
-          kernel_size: 7
-          padding: 3
-          layer_scale_init_value: 1e-6
-          use_dwconv: True  # depth-wise convs
-        num_layers: 2
 
     num_maskmem: 7
     image_size: ${scratch.resolution}
