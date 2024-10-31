@@ -908,6 +908,40 @@ class SAM2VideoPredictor(SAM2Base):
         features = self._prepare_backbone_features(expanded_backbone_out)
         features = (expanded_image,) + features
         return features
+    
+    def _get_event_feature(self, inference_state, frame_idx, batch_size):
+        """Compute the image features on a given frame."""
+        # Look up in the cache first
+        event, backbone_out = inference_state["cached_features"].get(
+            frame_idx, (None, None)
+        )
+        if backbone_out is None:
+            # Cache miss -- we will run inference on a single image
+            device = inference_state["device"]
+            event = inference_state["events"][frame_idx].to(device).float().unsqueeze(0)
+            backbone_out = self.forward_image(event)
+            # Cache the most recent frame's feature (for repeated interactions with
+            # a frame; we can use an LRU cache for more frames in the future).
+            inference_state["cached_features"] = {frame_idx: (event, backbone_out)}
+
+        # expand the features to have the same dimension as the number of objects
+        expanded_image = event.expand(batch_size, -1, -1, -1)
+        expanded_backbone_out = {
+            "backbone_fpn": backbone_out["backbone_fpn"].copy(),
+            "vision_pos_enc": backbone_out["vision_pos_enc"].copy(),
+        }
+        for i, feat in enumerate(expanded_backbone_out["backbone_fpn"]):
+            expanded_backbone_out["backbone_fpn"][i] = feat.expand(
+                batch_size, -1, -1, -1
+            )
+        for i, pos in enumerate(expanded_backbone_out["vision_pos_enc"]):
+            pos = pos.expand(batch_size, -1, -1, -1)
+            expanded_backbone_out["vision_pos_enc"][i] = pos
+
+        features = self._prepare_backbone_features(expanded_backbone_out)
+        features = (expanded_image,) + features
+        return features
+
 
     def _run_single_frame_inference(
         self,

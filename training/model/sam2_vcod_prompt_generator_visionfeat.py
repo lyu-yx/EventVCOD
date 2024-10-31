@@ -27,6 +27,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         self,
         image_encoder,
         memory_attention=None,
+        short_long_relation_attention=None,
+        feature_fusion=None,
         memory_encoder=None,
         prob_to_use_pt_input_for_train=0.0,
         prob_to_use_pt_input_for_eval=0.0,
@@ -66,9 +68,11 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         # of all frames at once. This avoids backbone OOM errors on very long videos in evaluation, but could be slightly slower.
         forward_backbone_per_frame_for_eval=False,
         freeze_image_encoder=False,
+        freeze_mask_decoder=False,
+        freeze_prompt_encoder=False,
         **kwargs,
     ):
-        super().__init__(image_encoder, memory_attention, memory_encoder, **kwargs)
+        super().__init__(image_encoder, memory_attention, memory_encoder, short_long_relation_attention, feature_fusion, **kwargs)
         self.use_act_ckpt_iterative_pt_sampling = use_act_ckpt_iterative_pt_sampling
         self.forward_backbone_per_frame_for_eval = forward_backbone_per_frame_for_eval
 
@@ -104,6 +108,14 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             for p in self.image_encoder.parameters():
                 p.requires_grad = False
 
+        if freeze_prompt_encoder:
+            for p in self.sam_prompt_encoder.parameters():
+                p.requires_grad = False
+
+        if freeze_mask_decoder:
+            for p in self.sam_mask_decoder.parameters():
+                p.requires_grad = False
+
     def forward(self, input: BatchedVideoDatapoint):
         if self.training or not self.forward_backbone_per_frame_for_eval:
             # precompute image features on all frames before tracking
@@ -112,12 +124,15 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         else:
             # defer image feature computation on a frame until it's being tracked
             backbone_out_img = {"backbone_fpn": None, "vision_pos_enc": None}
+            backbone_out_event = {"backbone_fpn": None, "vision_pos_enc": None}
+
         backbone_out_img = self.prepare_prompt_inputs(backbone_out_img, input)
+
         previous_stages_out = self.forward_tracking(backbone_out_img, input)
 
         return previous_stages_out
 
-    def _prepare_backbone_features_per_frame(self, img_batch, img_ids):
+    def _prepare_backbone_features_per_frame(self, img_batch, event_batch, img_ids):
         """Compute the image backbone features on the fly for the given img_ids."""
         # Only forward backbone on unique image ids to avoid repetitive computation
         # (if `img_ids` has only one element, it's already unique so we skip this step).
@@ -128,21 +143,34 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
 
         # Compute the image features on those unique image ids
         image = img_batch[unique_img_ids]
-        backbone_out = self.forward_image(image)
+        event = event_batch[unique_img_ids]
+
+        backbone_out_img = self.forward_image(image)
         (
             _,
             vision_feats,
             vision_pos_embeds,
             feat_sizes,
-        ) = self._prepare_backbone_features(backbone_out)
+        ) = self._prepare_backbone_features(backbone_out_img)
+
+        backbone_out_event = self.forward_image(event)
+        (
+            _,
+            vision_feats_event,
+            vision_pos_embeds_event,
+            feat_sizes_event,
+        ) = self._prepare_backbone_features(backbone_out_event)
         # Inverse-map image features for `unique_img_ids` to the final image features
         # for the original input `img_ids`.
         if inv_ids is not None:
             image = image[inv_ids]
             vision_feats = [x[:, inv_ids] for x in vision_feats]
             vision_pos_embeds = [x[:, inv_ids] for x in vision_pos_embeds]
+            vision_feats_event = [x[:, inv_ids] for x in vision_feats_event]
+            vision_pos_embeds_event = [x[:, inv_ids] for x in vision_pos_embeds_event]
+            
 
-        return image, vision_feats, vision_pos_embeds, feat_sizes
+        return image, vision_feats, vision_pos_embeds, vision_feats_event, vision_pos_embeds_event, feat_sizes
 
     def prepare_prompt_inputs(self, backbone_out, input, start_frame_idx=0):
         """
@@ -308,9 +336,11 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                     _,
                     current_vision_feats,
                     current_vision_pos_embeds,
+                    vision_feats_event, 
+                    vision_pos_embeds_event,
                     feat_sizes,
                 ) = self._prepare_backbone_features_per_frame(
-                    input.flat_img_batch, img_ids
+                    input.flat_img_batch, input.flat_event_batch, img_ids
                 )
 
             # Get output masks based on this frame's prompts and previous memory
@@ -319,6 +349,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 is_init_cond_frame=stage_id in init_cond_frames,
                 current_vision_feats=current_vision_feats,
                 current_vision_pos_embeds=current_vision_pos_embeds,
+                current_vision_feats_event=vision_feats_event,
+                current_vision_pos_embeds_event=vision_pos_embeds_event,
                 feat_sizes=feat_sizes,
                 point_inputs=backbone_out["point_inputs_per_frame"].get(stage_id, None),
                 mask_inputs=backbone_out["mask_inputs_per_frame"].get(stage_id, None),
@@ -357,6 +389,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         is_init_cond_frame,
         current_vision_feats,
         current_vision_pos_embeds,
+        current_vision_feats_event,
+        current_vision_pos_embeds_event,
         feat_sizes,
         point_inputs,
         mask_inputs,
@@ -375,6 +409,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             is_init_cond_frame,
             current_vision_feats,
             current_vision_pos_embeds,
+            current_vision_feats_event,
+            current_vision_pos_embeds_event,
             feat_sizes,
             point_inputs,
             mask_inputs,

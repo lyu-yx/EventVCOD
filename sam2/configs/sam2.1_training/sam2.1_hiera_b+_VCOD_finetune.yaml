@@ -147,9 +147,9 @@ trainer:
     # apply scaled sigmoid on mask logits for memory encoder, and directly feed input mask as output mask
     sigmoid_scale_for_mem_enc: 20.0
     sigmoid_bias_for_mem_enc: -10.0
-    use_mask_input_as_output_without_sam: true
+    use_mask_input_as_output_without_sam: false
     # Memory
-    directly_add_no_mem_embed: true
+    directly_add_no_mem_embed: false
     no_obj_embed_spatial: true
     # use high-resolution feature map in the SAM mask decoder
     use_high_res_features_in_sam: true
@@ -193,6 +193,10 @@ trainer:
     num_correction_pt_per_frame: 7
     use_act_ckpt_iterative_pt_sampling: false
     
+
+    freeze_image_encoder: True
+    freeze_mask_decoder: False
+    freeze_prompt_encoder: False
 
     
     num_init_cond_frames_for_eval: 1  # only mask on the first frame

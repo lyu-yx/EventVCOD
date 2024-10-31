@@ -27,6 +27,8 @@ class SAM2Base(torch.nn.Module):
         self,
         image_encoder,
         memory_attention,
+        short_long_relation_attention,
+        feature_fusion,
         memory_encoder,
         num_maskmem=7,  # default 1 input frame + 6 previous frames
         image_size=512,
@@ -97,10 +99,11 @@ class SAM2Base(torch.nn.Module):
         sam_mask_decoder_extra_args=None,
         compile_image_encoder: bool = False,
 
-        prompt_predict_embedding_dim = 256,
-        prompt_predict_num_keypoints = 16,
-        prompt_predict_hidden_dim = 16,
-        prompt_predict_num_boxes = 1,
+        
+        # prompt_predict_embedding_dim = 256,
+        # prompt_predict_num_keypoints = 16,
+        # prompt_predict_hidden_dim = 16,
+        # prompt_predict_num_boxes = 1,
     ):
         super().__init__()
 
@@ -126,7 +129,11 @@ class SAM2Base(torch.nn.Module):
         # Part 2: memory attention to condition current frame's visual features
         # with memories (and obj ptrs) from past frames
         self.memory_attention = memory_attention
+        self.short_long_relation_attention = short_long_relation_attention
         self.hidden_dim = image_encoder.neck.d_model
+
+        # Part 2.1: feature fusion for the memory decoder
+        self.feature_fusion = feature_fusion
 
         # Part 3: memory encoder for the previous frame's outputs
         self.memory_encoder = memory_encoder
@@ -437,7 +444,7 @@ class SAM2Base(torch.nn.Module):
             object_score_logits,
         )
 
-    def _use_mask_as_output(self, backbone_features, high_res_features, mask_inputs):
+    def _use_mask_as_output(self, backbone_features, backbone_features_event, high_res_features, high_res_event_features, mask_inputs):
         """
         Directly turn binary `mask_inputs` into a output mask logits without using SAM.
         (same input and output shapes as in _forward_sam_heads above).
@@ -687,6 +694,10 @@ class SAM2Base(torch.nn.Module):
         memory = torch.cat(to_cat_memory, dim=0)
         memory_pos_embed = torch.cat(to_cat_memory_pos_embed, dim=0)
 
+        print('memory sz', memory.size)
+        print('memory_pos_embed sz', memory_pos_embed.size)
+
+
         pix_feat_with_mem = self.memory_attention(
             curr=current_vision_feats,
             curr_pos=current_vision_pos_embeds,
@@ -754,6 +765,8 @@ class SAM2Base(torch.nn.Module):
         is_init_cond_frame,
         current_vision_feats,
         current_vision_pos_embeds,
+        current_vision_feats_event,
+        current_vision_pos_embeds_event,
         feat_sizes,
         point_inputs,
         mask_inputs,
@@ -762,6 +775,9 @@ class SAM2Base(torch.nn.Module):
         track_in_reverse,
         prev_sam_mask_logits,
     ):
+        
+        # Todo: change this function to build the entire pipeline
+
         current_out = {"point_inputs": point_inputs, "mask_inputs": mask_inputs}
         # High-resolution feature maps for the SAM head, reshape (HW)BC => BCHW
         if len(current_vision_feats) > 1:
@@ -769,15 +785,26 @@ class SAM2Base(torch.nn.Module):
                 x.permute(1, 2, 0).view(x.size(1), x.size(2), *s)
                 for x, s in zip(current_vision_feats[:-1], feat_sizes[:-1])
             ]
+
+            high_res_event_features = [
+                x.permute(1, 2, 0).view(x.size(1), x.size(2), *s)
+                for x, s in zip(current_vision_feats_event[:-1], feat_sizes[:-1])
+            ]
         else:
             high_res_features = None
+            high_res_event_features = None
+
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
             # When use_mask_input_as_output_without_sam=True, we directly output the mask input
             # (see it as a GT mask) without using a SAM prompt encoder + mask decoder.
             pix_feat = current_vision_feats[-1].permute(1, 2, 0)
             pix_feat = pix_feat.view(-1, self.hidden_dim, *feat_sizes[-1])
+
+            pix_feat_event = current_vision_feats_event[-1].permute(1, 2, 0)
+            pix_feat_event = pix_feat_event.view(-1, self.hidden_dim, *feat_sizes[-1])
+
             sam_outputs = self._use_mask_as_output(
-                pix_feat, high_res_features, mask_inputs
+                pix_feat, pix_feat_event, high_res_features, high_res_event_features, mask_inputs
             )
         else:
             # fused the visual feature with previous memory features in the memory bank
@@ -791,6 +818,25 @@ class SAM2Base(torch.nn.Module):
                 num_frames=num_frames,
                 track_in_reverse=track_in_reverse,
             )
+
+            pix_feat_short_long = self._prepare_memory_conditioned_features(
+                frame_idx=frame_idx,
+                is_init_cond_frame=is_init_cond_frame,
+                current_vision_feats=current_vision_feats_event[-1:],
+                current_vision_pos_embeds=current_vision_pos_embeds_event[-1:],
+                feat_sizes=feat_sizes[-1:],
+                output_dict=output_dict,
+                num_frames=num_frames,
+                track_in_reverse=track_in_reverse,
+            )
+
+            # feats fusion
+            # print pix_feat and pix_feat_short_long shape
+            print('pix_feat sz', pix_feat.size)
+            print('pix_feat_short_long sz', pix_feat_short_long.size)
+
+            pix_feat = self.feature_fusion(pix_feat, pix_feat_short_long)
+
             # apply SAM-style segmentation head
             # here we might feed previously predicted low-res SAM mask logits into the SAM mask decoder,
             # e.g. in demo where such logits come from earlier interaction instead of correction sampling
