@@ -532,6 +532,8 @@ class SAM2Base(torch.nn.Module):
         is_init_cond_frame,
         current_vision_feats,
         current_vision_pos_embeds,
+        current_vision_feats_event,
+        current_vision_pos_embeds_event,
         feat_sizes,
         output_dict,
         num_frames,
@@ -546,7 +548,8 @@ class SAM2Base(torch.nn.Module):
         # In this case, we skip the fusion with any memory.
         if self.num_maskmem == 0:  # Disable memory and skip fusion
             pix_feat = current_vision_feats[-1].permute(1, 2, 0).view(B, C, H, W)
-            return pix_feat
+            pix_feat_event = current_vision_feats_event[-1].permute(1, 2, 0).view(B, C, H, W)
+            return pix_feat, pix_feat_event
 
         num_obj_ptr_tokens = 0
         tpos_sign_mul = -1 if track_in_reverse else 1
@@ -684,20 +687,27 @@ class SAM2Base(torch.nn.Module):
                 # directly add no-mem embedding (instead of using the transformer encoder)
                 pix_feat_with_mem = current_vision_feats[-1] + self.no_mem_embed
                 pix_feat_with_mem = pix_feat_with_mem.permute(1, 2, 0).view(B, C, H, W)
-                return pix_feat_with_mem
+
+                pix_feat_with_mem_event = current_vision_feats_event[-1] + self.no_mem_embed
+                pix_feat_with_mem_event = pix_feat_with_mem_event.permute(1, 2, 0).view(B, C, H, W)
+
+                return pix_feat_with_mem, pix_feat_with_mem_event
 
             # Use a dummy token on the first frame (to avoid empty memory input to tranformer encoder)
             to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim)]
             to_cat_memory_pos_embed = [self.no_mem_pos_enc.expand(1, B, self.mem_dim)]
 
+            to_cat_memory_event = [self.no_mem_embed.expand(1, B, self.mem_dim)]
+            to_cat_memory_pos_embed_event = [self.no_mem_pos_enc.expand(1, B, self.mem_dim)]
+
         # Step 2: Concatenate the memories and forward through the transformer encoder
         memory = torch.cat(to_cat_memory, dim=0)
         memory_pos_embed = torch.cat(to_cat_memory_pos_embed, dim=0)
 
-        print('memory sz', memory.size)
-        print('memory_pos_embed sz', memory_pos_embed.size)
+        memory_event = torch.cat(to_cat_memory_event, dim=0)
+        memory_pos_embed_event = torch.cat(to_cat_memory_pos_embed_event, dim=0)
 
-
+        
         pix_feat_with_mem = self.memory_attention(
             curr=current_vision_feats,
             curr_pos=current_vision_pos_embeds,
@@ -705,9 +715,19 @@ class SAM2Base(torch.nn.Module):
             memory_pos=memory_pos_embed,
             num_obj_ptr_tokens=num_obj_ptr_tokens,
         )
+
+        pix_feat_with_mem = self.short_long_relation_attention(
+            curr=current_vision_feats_event,
+            curr_pos=current_vision_pos_embeds_event,
+            memory=memory_event,
+            memory_pos=memory_pos_embed_event,
+            num_obj_ptr_tokens=num_obj_ptr_tokens,
+        )
         # reshape the output (HW)BC => BCHW
         pix_feat_with_mem = pix_feat_with_mem.permute(1, 2, 0).view(B, C, H, W)
-        return pix_feat_with_mem
+        pix_feat_with_mem_event = pix_feat_with_mem_event.permute(1, 2, 0).view(B, C, H, W)
+
+        return pix_feat_with_mem, pix_feat_with_mem_event
     
     def _prepare_memory_conditioned_features_event(
         self,
@@ -991,27 +1011,20 @@ class SAM2Base(torch.nn.Module):
             )
         else:
             # fused the visual feature with previous memory features in the memory bank
-            pix_feat = self._prepare_memory_conditioned_features(
+            pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
                 frame_idx=frame_idx,
                 is_init_cond_frame=is_init_cond_frame,
                 current_vision_feats=current_vision_feats[-1:],
                 current_vision_pos_embeds=current_vision_pos_embeds[-1:],
+                current_vision_feats_event=current_vision_feats_event[-1:],
+                current_vision_pos_embeds_event=current_vision_pos_embeds_event[-1:],
                 feat_sizes=feat_sizes[-1:],
                 output_dict=output_dict,
                 num_frames=num_frames,
                 track_in_reverse=track_in_reverse,
             )
 
-            pix_feat_short_long = self._prepare_memory_conditioned_features_event(
-                frame_idx=frame_idx,
-                is_init_cond_frame=is_init_cond_frame,
-                current_vision_feats=current_vision_feats_event[-1:],
-                current_vision_pos_embeds=current_vision_pos_embeds_event[-1:],
-                feat_sizes=feat_sizes[-1:],
-                output_dict=output_dict,
-                num_frames=num_frames,
-                track_in_reverse=track_in_reverse,
-            )
+            
 
             # feats fusion
             # print pix_feat and pix_feat_short_long shape
