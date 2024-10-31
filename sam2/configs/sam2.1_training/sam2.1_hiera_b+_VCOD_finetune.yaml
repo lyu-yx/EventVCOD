@@ -117,6 +117,44 @@ trainer:
           kv_in_dim: 64
       num_layers: 4
 
+    short_long_relation_attention:
+      _target_: sam2.modeling.memory_attention.MemoryAttention
+      d_model: 256
+      pos_enc_at_input: true
+      layer:
+        _target_: sam2.modeling.memory_attention.MemoryAttentionLayer
+        activation: relu
+        dim_feedforward: 2048
+        dropout: 0.1
+        pos_enc_at_attn: false
+        self_attention:
+          _target_: sam2.modeling.sam.transformer.RoPEAttention
+          rope_theta: 10000.0
+          feat_sizes: [32, 32]
+          embedding_dim: 256
+          num_heads: 1
+          downsample_rate: 1
+          dropout: 0.1
+        d_model: 256
+        pos_enc_at_cross_attn_keys: true
+        pos_enc_at_cross_attn_queries: false
+        cross_attention:
+          _target_: sam2.modeling.sam.transformer.RoPEAttention
+          rope_theta: 10000.0
+          feat_sizes: [32, 32]
+          rope_k_repeat: True
+          embedding_dim: 256
+          num_heads: 1
+          downsample_rate: 1
+          dropout: 0.1
+          kv_in_dim: 64
+      num_layers: 4
+
+    feature_fusion:
+        _target_: sam2.modeling.featurefusion.AdaptiveTemporalFusion
+        in_channels: 256
+
+
     memory_encoder:
         _target_: sam2.modeling.memory_encoder.MemoryEncoder
         out_dim: 64
@@ -196,7 +234,7 @@ trainer:
 
     freeze_image_encoder: True
     freeze_mask_decoder: False
-    freeze_prompt_encoder: False
+    freeze_prompt_encoder: True
 
     
     num_init_cond_frames_for_eval: 1  # only mask on the first frame
