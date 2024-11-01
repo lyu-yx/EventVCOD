@@ -670,6 +670,11 @@ class SAM2Base(torch.nn.Module):
                 return pix_feat_with_mem
 
             # Use a dummy token on the first frame (to avoid empty memory input to tranformer encoder)
+            
+            print('self.no_mem_embed.shape', self.no_mem_embed.shape)
+            print('self.no_mem_pos_enc.shape', self.no_mem_pos_enc.shape)
+            print('self.mem_dim', self.mem_dim)
+
             to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim)]
             to_cat_memory_pos_embed = [self.no_mem_pos_enc.expand(1, B, self.mem_dim)]
 
