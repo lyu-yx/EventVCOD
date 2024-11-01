@@ -313,7 +313,7 @@ trainer:
     model_weight_initializer:
       _partial_: True
       _target_: training.utils.checkpoint_utils.load_state_dict_into_model
-      strict: True
+      strict: false
       ignore_unexpected_keys: null
       ignore_missing_keys: null
 
