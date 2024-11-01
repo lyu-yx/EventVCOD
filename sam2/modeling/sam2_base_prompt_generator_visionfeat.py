@@ -694,6 +694,15 @@ class SAM2Base(torch.nn.Module):
                 return pix_feat_with_mem, pix_feat_with_mem_event
 
             # Use a dummy token on the first frame (to avoid empty memory input to tranformer encoder)
+            # base_memory_embed = self.no_mem_embed.view(1, 1, 64, 4).mean(dim=-1)  # Shape: (1, 1, 64)
+            # base_memory_pos_embed = self.no_mem_pos_enc.view(1, 1, 64, 4).mean(dim=-1)  # Shape: (1, 1, 64)
+            
+            # Expand the reduced tensors to match the shape (1, B, 64) for each required variable
+            # to_cat_memory = [base_memory_embed.expand(1, B, self.mem_dim)]  
+            # to_cat_memory_pos_embed = [base_memory_pos_embed.expand(1, B, self.mem_dim)]  
+            # to_cat_memory_event = [base_memory_embed.expand(1, B, self.mem_dim)]  
+            # to_cat_memory_pos_embed_event = [base_memory_pos_embed.expand(1, B, self.mem_dim)]
+
             to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim)]
             to_cat_memory_pos_embed = [self.no_mem_pos_enc.expand(1, B, self.mem_dim)]
 
@@ -703,7 +712,7 @@ class SAM2Base(torch.nn.Module):
         # Step 2: Concatenate the memories and forward through the transformer encoder
         memory = torch.cat(to_cat_memory, dim=0)
         memory_pos_embed = torch.cat(to_cat_memory_pos_embed, dim=0)
-
+        
         memory_event = torch.cat(to_cat_memory_event, dim=0)
         memory_pos_embed_event = torch.cat(to_cat_memory_pos_embed_event, dim=0)
 
@@ -716,7 +725,7 @@ class SAM2Base(torch.nn.Module):
             num_obj_ptr_tokens=num_obj_ptr_tokens,
         )
 
-        pix_feat_with_mem = self.short_long_relation_attention(
+        pix_feat_with_mem_event = self.short_long_relation_attention(
             curr=current_vision_feats_event,
             curr_pos=current_vision_pos_embeds_event,
             memory=memory_event,

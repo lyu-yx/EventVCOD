@@ -337,8 +337,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 # Retrieve image features according to img_ids (if they are already computed).
                 current_vision_feats = [x[:, img_ids] for x in vision_feats]
                 current_vision_pos_embeds = [x[:, img_ids] for x in vision_pos_embeds]
-                vision_feats_event = [x[:, img_ids] for x in vision_feats_event]
-                vision_pos_embeds_event = [x[:, img_ids] for x in vision_pos_embeds_event]
+                current_vision_feats_event = [x[:, img_ids] for x in vision_feats_event]
+                current_vision_pos_embeds_event = [x[:, img_ids] for x in vision_pos_embeds_event]
             else:
                 # Otherwise, compute the image features on the fly for the given img_ids
                 # (this might be used for evaluation on long videos to avoid backbone OOM).
@@ -346,8 +346,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                     _,
                     current_vision_feats,
                     current_vision_pos_embeds,
-                    vision_feats_event, 
-                    vision_pos_embeds_event,
+                    current_vision_feats_event, 
+                    current_vision_pos_embeds_event,
                     feat_sizes,
                 ) = self._prepare_backbone_features_per_frame(
                     input.flat_img_batch, input.flat_event_batch, img_ids
@@ -359,8 +359,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 is_init_cond_frame=stage_id in init_cond_frames,
                 current_vision_feats=current_vision_feats,
                 current_vision_pos_embeds=current_vision_pos_embeds,
-                current_vision_feats_event=vision_feats_event,
-                current_vision_pos_embeds_event=vision_pos_embeds_event,
+                current_vision_feats_event=current_vision_feats_event,
+                current_vision_pos_embeds_event=current_vision_pos_embeds_event,
                 feat_sizes=feat_sizes,
                 point_inputs=backbone_out["point_inputs_per_frame"].get(stage_id, None),
                 mask_inputs=backbone_out["mask_inputs_per_frame"].get(stage_id, None),
