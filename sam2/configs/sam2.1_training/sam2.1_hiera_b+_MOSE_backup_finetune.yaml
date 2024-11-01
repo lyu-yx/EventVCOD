@@ -13,9 +13,9 @@ scratch:
 
 dataset:
   # PATHS to Dataset
-  img_folder: /scratch/hp2173/EventVCOD/datasets/MOSE/valid/JPEGImages # PATH to MOSE JPEGImages folder
-  gt_folder: /scratch/hp2173/EventVCOD/datasets/MOSE/valid/Annotations/  # PATH to MOSE Annotations folder
-  file_list_txt: training/assets/MOSE_sample_val_list.txt # Optional PATH to filelist containing a subset of videos to be used for training
+  img_folder: /scratch/hp2173/EventVCOD/datasets/MOSE/train/JPEGImages # PATH to MOSE JPEGImages folder
+  gt_folder: /scratch/hp2173/EventVCOD/datasets/MOSE/train/Annotations/  # PATH to MOSE Annotations folder
+  file_list_txt: training/assets/MOSE_sample_train_list.txt # Optional PATH to filelist containing a subset of videos to be used for training
   multiplier: 2
 
 # Video transforms
@@ -283,6 +283,7 @@ trainer:
       _target_: training.loss_fns.MultiStepMultiMasksAndIous
       weight_dict:
         loss_mask: 20
+        loss_struc: 20
         loss_dice: 1
         loss_iou: 1
         loss_class: 1
@@ -324,7 +325,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: null # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_MOSE_finetune/ # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
