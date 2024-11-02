@@ -894,10 +894,10 @@ class Trainer:
                     extra_loss_key, self.device, ":.2e"
                 )
                 if isinstance(extra_loss, torch.Tensor):
-                    print('extra_loss.item()', extra_loss.item())
+                    # print('extra_loss.item()', extra_loss.item())
                     extra_loss_mts[extra_loss_key].update(extra_loss.item(), batch_size)
                 else:
-                    print('extra_loss', extra_loss)
+                    # print('extra_loss', extra_loss)
                     extra_loss_mts[extra_loss_key].update(extra_loss, batch_size)
             # extra_loss_mts[extra_loss_key].update(extra_loss.item(), batch_size)
 

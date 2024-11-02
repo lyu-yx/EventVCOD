@@ -9,7 +9,7 @@ scratch:
   base_lr: 5.0e-6
   vision_lr: 3.0e-06
   phases_per_epoch: 1
-  num_epochs: 40
+  num_epochs: 200
 
 dataset:
   # PATHS to Dataset
@@ -343,8 +343,8 @@ trainer:
       _target_: training.loss_fns.MultiStepMultiMasksAndIous
       weight_dict:
         loss_mask: 20
-        loss_struc: 20
-        loss_dice: 1
+        loss_struc: 1
+        loss_dice: 10
         loss_iou: 1
         loss_class: 1
       supervise_all_iou: true
