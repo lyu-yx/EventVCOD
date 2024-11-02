@@ -127,6 +127,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             backbone_out_event = {"backbone_fpn": None, "vision_pos_enc": None}
 
         backbone_out_img = self.prepare_prompt_inputs(backbone_out_img, input)
+        backbone_out_event = self.prepare_prompt_inputs(backbone_out_event, input)
 
         previous_stages_out = self.forward_tracking(backbone_out_img, backbone_out_event, input)
 
@@ -352,8 +353,10 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 ) = self._prepare_backbone_features_per_frame(
                     input.flat_img_batch, input.flat_event_batch, img_ids
                 )
+                
 
             # Get output masks based on this frame's prompts and previous memory
+            
             current_out = self.track_step(
                 frame_idx=stage_id,
                 is_init_cond_frame=stage_id in init_cond_frames,

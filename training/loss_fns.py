@@ -48,7 +48,7 @@ def dice_loss(inputs, targets, num_objects, loss_on_multimask=False):
         return loss / num_objects
     return loss.sum() / num_objects
 
-def structure_loss(inputs, targets):
+def structure_loss(pred, targets):
     """
     Structure loss (ref: F3Net-AAAI-2020)
     Args:

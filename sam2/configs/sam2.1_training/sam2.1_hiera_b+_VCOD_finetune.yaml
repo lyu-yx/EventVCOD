@@ -186,7 +186,7 @@ trainer:
     sigmoid_bias_for_mem_enc: -10.0
     use_mask_input_as_output_without_sam: false
     # Memory
-    directly_add_no_mem_embed: false
+    directly_add_no_mem_embed: true
     no_obj_embed_spatial: true
     # use high-resolution feature map in the SAM mask decoder
     use_high_res_features_in_sam: true

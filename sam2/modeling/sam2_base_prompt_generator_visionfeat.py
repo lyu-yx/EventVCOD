@@ -46,7 +46,7 @@ class SAM2Base(torch.nn.Module):
         # (instead of using the transformer encoder)
         directly_add_no_mem_embed=False,
         # whether to use high-resolution feature maps in the SAM mask decoder
-        use_high_res_features_in_sam=False,
+        use_high_res_features_in_sam=True,
         # whether to output multiple (3) masks for the first click on initial conditioning frames
         multimask_output_in_sam=False,
         # the minimum and maximum number of clicks to use multimask_output_in_sam (only relevant when `multimask_output_in_sam=True`;
@@ -713,8 +713,8 @@ class SAM2Base(torch.nn.Module):
         memory = torch.cat(to_cat_memory, dim=0)
         memory_pos_embed = torch.cat(to_cat_memory_pos_embed, dim=0)
         
-        memory_event = torch.cat(to_cat_memory_event, dim=0)
-        memory_pos_embed_event = torch.cat(to_cat_memory_pos_embed_event, dim=0)
+        # memory_event = torch.cat(to_cat_memory_event, dim=0)
+        # memory_pos_embed_event = torch.cat(to_cat_memory_pos_embed_event, dim=0)
 
         
         pix_feat_with_mem = self.memory_attention(
@@ -728,8 +728,8 @@ class SAM2Base(torch.nn.Module):
         pix_feat_with_mem_event = self.short_long_relation_attention(
             curr=current_vision_feats_event,
             curr_pos=current_vision_pos_embeds_event,
-            memory=memory_event,
-            memory_pos=memory_pos_embed_event,
+            memory=memory,
+            memory_pos=memory_pos_embed,
             num_obj_ptr_tokens=num_obj_ptr_tokens,
         )
         # reshape the output (HW)BC => BCHW
@@ -837,6 +837,7 @@ class SAM2Base(torch.nn.Module):
             )
         else:
             # fused the visual feature with previous memory features in the memory bank
+            
             pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
                 frame_idx=frame_idx,
                 is_init_cond_frame=is_init_cond_frame,
