@@ -855,8 +855,8 @@ class SAM2Base(torch.nn.Module):
 
             # feats fusion
             # print pix_feat and pix_feat_short_long shape
-            print('pix_feat sz', pix_feat.size)
-            print('pix_feat_short_long sz', pix_feat_short_long.size)
+            # print('pix_feat sz', pix_feat.size)
+            # print('pix_feat_short_long sz', pix_feat_short_long.size)
 
             pix_feat = self.feature_fusion(pix_feat, pix_feat_short_long)
 
