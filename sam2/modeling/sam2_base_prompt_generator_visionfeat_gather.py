@@ -241,7 +241,7 @@ class SAM2Base(torch.nn.Module):
                 self.sam_image_embedding_size,
             ),
             input_image_size=(self.image_size, self.image_size),
-            mask_in_chans=16,
+            mask_in_chans=self.hidden_dim,
         )
 
         self.embedding_generator.apply(initialize_embedding_generator)
@@ -871,6 +871,8 @@ class SAM2Base(torch.nn.Module):
         is_init_cond_frame,
         current_vision_feats,
         current_vision_pos_embeds,
+        current_vision_feats_event,
+        current_vision_pos_embeds_event,
         feat_sizes,
         point_inputs,
         mask_inputs,
@@ -891,6 +893,8 @@ class SAM2Base(torch.nn.Module):
             is_init_cond_frame,
             current_vision_feats,
             current_vision_pos_embeds,
+            current_vision_feats_event,
+            current_vision_pos_embeds_event,
             feat_sizes,
             point_inputs,
             mask_inputs,

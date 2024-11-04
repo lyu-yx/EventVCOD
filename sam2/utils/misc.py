@@ -208,6 +208,131 @@ def load_video_frames(
         raise NotImplementedError(
             "Only MP4 video and JPEG folder are supported at this moment"
         )
+    
+
+def load_video_frames_and_events(
+    video_path,
+    image_size,
+    offload_video_to_cpu,
+    img_mean=(0.485, 0.456, 0.406),
+    img_std=(0.229, 0.224, 0.225),
+    async_loading_frames=False,
+    compute_device=torch.device("cuda"),
+):
+    """
+    Load the video frames from video_path. The frames are resized to image_size as in
+    the model and are loaded to GPU if offload_video_to_cpu=False. This is used by the demo.
+    """
+    is_bytes = isinstance(video_path, bytes)
+    is_str = isinstance(video_path, str)
+    is_mp4_path = is_str and os.path.splitext(video_path)[-1] in [".mp4", ".MP4"]
+    if is_bytes or is_mp4_path:
+        return load_video_frames_from_video_file(
+            video_path=video_path,
+            image_size=image_size,
+            offload_video_to_cpu=offload_video_to_cpu,
+            img_mean=img_mean,
+            img_std=img_std,
+            compute_device=compute_device,
+        )
+    elif is_str and os.path.isdir(video_path):
+        return load_video_frames_from_jpg_images(
+            video_path=video_path,
+            image_size=image_size,
+            offload_video_to_cpu=offload_video_to_cpu,
+            img_mean=img_mean,
+            img_std=img_std,
+            async_loading_frames=async_loading_frames,
+            compute_device=compute_device,
+        )
+    else:
+        raise NotImplementedError(
+            "Only MP4 video and JPEG folder are supported at this moment"
+        )
+
+def load_video_frames_and_events_from_jpg_images(
+    video_path,
+    image_size,
+    offload_video_to_cpu,
+    img_mean=(0.485, 0.456, 0.406),
+    img_std=(0.229, 0.224, 0.225),
+    async_loading_frames=False,
+    compute_device=torch.device("cuda"),
+):
+    """
+    Load the video frames from a directory of JPEG files ("<frame_index>.jpg" format).
+
+    The frames are resized to image_size x image_size and are loaded to GPU if
+    `offload_video_to_cpu` is `False` and to CPU if `offload_video_to_cpu` is `True`.
+
+    You can load a frame asynchronously by setting `async_loading_frames` to `True`.
+    """
+    if isinstance(video_path, str) and os.path.isdir(video_path):
+        jpg_folder = video_path
+        frame_folder = os.path.join(jpg_folder, 'GT')
+        event_folder = os.path.join(jpg_folder, 'Eventflow', 'red_blue_visualization')
+    else:
+        raise NotImplementedError(
+            "Only JPEG frames are supported at this moment. For video files, you may use "
+            "ffmpeg (https://ffmpeg.org/) to extract frames into a folder of JPEG files, such as \n"
+            "```\n"
+            "ffmpeg -i <your_video>.mp4 -q:v 2 -start_number 0 <output_dir>/'%05d.jpg'\n"
+            "```\n"
+            "where `-q:v` generates high-quality JPEG frames and `-start_number 0` asks "
+            "ffmpeg to start the JPEG file from 00000.jpg."
+        )
+
+    frame_names = [
+        p
+        for p in os.listdir(frame_folder)
+        if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
+    ]
+    event_names = [
+        p
+        for p in os.listdir(event_folder)
+        if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
+    ]
+
+    frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
+    num_frames = len(frame_names)
+    if num_frames == 0:
+        raise RuntimeError(f"no images found in {frame_names}")
+    img_paths = [os.path.join(frame_names, frame_name) for frame_name in frame_names]
+    evt_paths = [os.path.join(event_names, event_name) for event_name in event_names]
+
+    img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
+    img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
+
+    if async_loading_frames:
+        lazy_images = AsyncVideoFrameLoader(
+            img_paths,
+            image_size,
+            offload_video_to_cpu,
+            img_mean,
+            img_std,
+            compute_device,
+        )
+        return lazy_images, lazy_images.video_height, lazy_images.video_width
+
+    images = torch.zeros(num_frames, 3, image_size, image_size, dtype=torch.float32)
+    events = torch.zeros(num_frames, 3, image_size, image_size, dtype=torch.float32)
+    
+    for n, img_path in enumerate(tqdm(img_paths, desc="frame loading (JPEG)")):
+        images[n], video_height, video_width = _load_img_as_tensor(img_path, image_size)
+    
+    for n, evt_path in enumerate(tqdm(evt_paths, desc="event loading (JPEG)")):
+        events[n], video_height, video_width = _load_img_as_tensor(evt_path, image_size)
+
+    if not offload_video_to_cpu:
+        images = images.to(compute_device)
+        events = events.to(compute_device)
+        img_mean = img_mean.to(compute_device)
+        img_std = img_std.to(compute_device)
+    # normalize by mean and std
+    images -= img_mean
+    images /= img_std
+    return images, events, video_height, video_width
+
 
 
 def load_video_frames_from_jpg_images(

@@ -885,7 +885,7 @@ class Trainer:
                 raise FloatingPointError(error_msg)
             else:
                 return
-
+        print('backward loss', loss)
         self.scaler.scale(loss).backward()
         loss_mts[loss_key].update(loss.item(), batch_size)
         for extra_loss_key, extra_loss in extra_losses.items():

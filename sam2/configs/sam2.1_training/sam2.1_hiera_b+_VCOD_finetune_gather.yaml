@@ -3,7 +3,7 @@
 scratch:
   resolution: 1024
   train_batch_size: 1
-  num_train_workers: 10
+  num_train_workers: 8
   num_frames: 8
   max_num_objects: 1
   base_lr: 5.0e-6
