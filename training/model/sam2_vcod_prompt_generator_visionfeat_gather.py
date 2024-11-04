@@ -69,7 +69,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         forward_backbone_per_frame_for_eval=False,
         freeze_image_encoder=False,
         freeze_mask_decoder=False,
-        freeze_prompt_encoder=False,
+        freeze_embedding_generator=False,
         **kwargs,
     ):
         super().__init__(image_encoder, memory_attention, short_long_relation_attention, feature_fusion, memory_encoder, **kwargs)
@@ -108,8 +108,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             for p in self.image_encoder.parameters():
                 p.requires_grad = False
 
-        if freeze_prompt_encoder:
-            for p in self.sam_prompt_encoder.parameters():
+        if freeze_embedding_generator:
+            for p in self.embedding_generator.parameters():
                 p.requires_grad = False
 
         if freeze_mask_decoder:

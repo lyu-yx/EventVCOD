@@ -233,7 +233,7 @@ trainer:
 
     freeze_image_encoder: True
     freeze_mask_decoder: False
-    freeze_prompt_encoder: True
+    freeze_embedding_generator: False
 
     
     num_init_cond_frames_for_eval: 1  # only mask on the first frame

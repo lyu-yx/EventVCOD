@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple, Type
-from einops import rearrange
 
 class EmbeddingGenerator(nn.Module):
     def __init__(
