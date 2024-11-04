@@ -55,13 +55,10 @@ class RandomUniformSampler(VOSSampler):
                 frames = frames[::-1]
                 events = events[::-1]
 
-            
-
             # Get first frame object ids
             visible_object_ids = []
             loaded_segms = segment_loader.load(frames[0].frame_idx)
             
-
             if isinstance(loaded_segms, LazySegments):
                 # LazySegments for SA1BRawDataset
                 visible_object_ids = list(loaded_segms.keys())

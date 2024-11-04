@@ -125,6 +125,8 @@ class PalettisedPNGSegmentLoader:
             binary_segments: dict
         """
         # check the path
+        if frame_id not in self.frame_id_to_png_filename:
+            print(f"Frame ID {frame_id} not found in frame_id_to_png_filename.")
         mask_path = os.path.join(
             self.video_png_root, self.frame_id_to_png_filename[frame_id]
         )
