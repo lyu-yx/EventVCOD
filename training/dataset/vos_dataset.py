@@ -92,7 +92,7 @@ class VOSDataset(VisionDataset):
 
         
         # Iterate over the sampled frames and store their rgb data and object data (bbox, segment)
-        for frame_idx, frame, event in enumerate(zip(sampled_frames, sampled_events)):
+        for frame_idx, frame in enumerate(sampled_frames):
             w, h = rgb_images[frame_idx].size
             images.append(
                 Frame(
