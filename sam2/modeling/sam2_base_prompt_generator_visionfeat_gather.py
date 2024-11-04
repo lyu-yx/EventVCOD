@@ -12,7 +12,7 @@ from torch.nn.init import trunc_normal_
 
 
 from sam2.modeling.sam.mask_decoder import MaskDecoder
-from sam2.modeling.sam.prompt_encoder import PromptEncoder, EmbeddingGenerator
+from sam2.modeling.sam.embedding_generator import EmbeddingGenerator
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 
@@ -229,16 +229,17 @@ class SAM2Base(torch.nn.Module):
 
         # build PromptEncoder and MaskDecoder from SAM
         # (their hyperparameters like `mask_in_chans=16` are from SAM code)
-        self.sam_prompt_encoder = PromptEncoder(
-            embed_dim=self.sam_prompt_embed_dim,
-            image_embedding_size=(
-                self.sam_image_embedding_size,
-                self.sam_image_embedding_size,
-            ),
-            input_image_size=(self.image_size, self.image_size),
-            mask_in_chans=16,
-        )
+        # self.sam_prompt_encoder = PromptEncoder(
+        #     embed_dim=self.sam_prompt_embed_dim,
+        #     image_embedding_size=(
+        #         self.sam_image_embedding_size,
+        #         self.sam_image_embedding_size,
+        #     ),
+        #     input_image_size=(self.image_size, self.image_size),
+        #     mask_in_chans=16,
+        # )
 
+        # directly generate embeddings from image features
         self.embedding_generator = EmbeddingGenerator(
             embed_dim=self.sam_prompt_embed_dim,
             image_embedding_size=(
