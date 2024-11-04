@@ -15,6 +15,7 @@ from sam2.modeling.sam.mask_decoder import MaskDecoder
 from sam2.modeling.sam.embedding_generator import EmbeddingGenerator
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
+from sam2.modeling.sam.embedding_generator import initialize_embedding_generator
 
 # from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
@@ -130,6 +131,8 @@ class SAM2Base(torch.nn.Module):
         # with memories (and obj ptrs) from past frames
         self.memory_attention = memory_attention
         self.short_long_relation_attention = short_long_relation_attention
+
+        
         self.hidden_dim = image_encoder.neck.d_model
 
         # Part 2.1: feature fusion for the memory decoder
@@ -249,6 +252,8 @@ class SAM2Base(torch.nn.Module):
             input_image_size=(self.image_size, self.image_size),
             mask_in_chans=16,
         )
+
+        self.embedding_generator.apply(initialize_embedding_generator)
         
         self.sam_mask_decoder = MaskDecoder(
             num_multimask_outputs=3,

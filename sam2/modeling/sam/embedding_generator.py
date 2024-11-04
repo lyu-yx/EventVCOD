@@ -3,6 +3,20 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple, Type
 
+
+def initialize_embedding_generator(module):
+    if isinstance(module, nn.Conv2d):
+        nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+        if module.bias is not None:
+            nn.init.constant_(module.bias, 0)
+    elif isinstance(module, nn.BatchNorm2d):
+        nn.init.constant_(module.weight, 1)
+        nn.init.constant_(module.bias, 0)
+    elif isinstance(module, nn.Linear):
+        nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+        nn.init.constant_(module.bias, 0)
+
+
 class EmbeddingGenerator(nn.Module):
     def __init__(
         self,
