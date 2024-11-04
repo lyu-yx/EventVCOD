@@ -92,7 +92,7 @@ class VOSDataset(VisionDataset):
 
         
         # Iterate over the sampled frames and store their rgb data and object data (bbox, segment)
-        for frame_idx, frame in enumerate(sampled_frames):
+        for frame_idx, frame, event in enumerate(zip(sampled_frames, sampled_events)):
             w, h = rgb_images[frame_idx].size
             images.append(
                 Frame(
@@ -100,6 +100,13 @@ class VOSDataset(VisionDataset):
                     objects=[],
                 )
             )
+            events.append(
+                Frame(
+                    data=rgb_events[frame_idx],
+                    objects=[],
+                )
+            )
+            
             # We load the gt segments associated with the current frame
             if isinstance(segment_loader, JSONSegmentLoader):
                 segments = segment_loader.load(
@@ -129,36 +136,6 @@ class VOSDataset(VisionDataset):
                     )
                 )
 
-        # Iterate over the sampled frames and store their rgb data and object data (bbox, segment)
-        for frame_idx, event in enumerate(sampled_events):
-            w, h = rgb_events[frame_idx].size
-            events.append(
-                Frame(
-                    data=rgb_events[frame_idx],
-                    objects=[],
-                )
-            )
-            # We load the gt segments associated with the current frame
-            if isinstance(segment_loader, JSONSegmentLoader):
-                segments = segment_loader.load(
-                    event.frame_idx, obj_ids=sampled_object_ids
-                )
-            else:
-                segments = segment_loader.load(event.frame_idx)
-            for obj_id in sampled_object_ids:
-                # Extract the segment
-                if obj_id in segments:
-                    assert (
-                        segments[obj_id] is not None
-                    ), "None targets are not supported"
-                    # segment is uint8 and remains uint8 throughout the transforms
-                    segment = segments[obj_id].to(torch.uint8)
-                else:
-                    # There is no target, we either use a zero mask target or drop this object
-                    if not self.always_target:
-                        continue
-                    segment = torch.zeros(h, w, dtype=torch.uint8)
-
                 events[frame_idx].objects.append(
                     Object(
                         object_id=obj_id,
@@ -166,6 +143,44 @@ class VOSDataset(VisionDataset):
                         segment=segment,
                     )
                 )
+
+        # Iterate over the sampled frames and store their rgb data and object data (bbox, segment)
+        # for frame_idx, event in enumerate(sampled_events):
+        #     w, h = rgb_events[frame_idx].size
+        #     events.append(
+        #         Frame(
+        #             data=rgb_events[frame_idx],
+        #             objects=[],
+        #         )
+        #     )
+        #     # We load the gt segments associated with the current frame
+        #     if isinstance(segment_loader, JSONSegmentLoader):
+        #         segments = segment_loader.load(
+        #             event.frame_idx, obj_ids=sampled_object_ids
+        #         )
+        #     else:
+        #         segments = segment_loader.load(event.frame_idx)
+        #     for obj_id in sampled_object_ids:
+        #         # Extract the segment
+        #         if obj_id in segments:
+        #             assert (
+        #                 segments[obj_id] is not None
+        #             ), "None targets are not supported"
+        #             # segment is uint8 and remains uint8 throughout the transforms
+        #             segment = segments[obj_id].to(torch.uint8)
+        #         else:
+        #             # There is no target, we either use a zero mask target or drop this object
+        #             if not self.always_target:
+        #                 continue
+        #             segment = torch.zeros(h, w, dtype=torch.uint8)
+
+        #         events[frame_idx].objects.append(
+        #             Object(
+        #                 object_id=obj_id,
+        #                 frame_index=frame.frame_idx,
+        #                 segment=segment,
+        #             )
+        #         )
         
         return VideoDatapoint(
             frames=images,
