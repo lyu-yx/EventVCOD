@@ -2,19 +2,24 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple, Type
+from prompt_gen.backbone.position_encoding import PositionEmbeddingRandom
 
 
 def initialize_embedding_generator(module):
     if isinstance(module, nn.Conv2d):
         nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
-        if module.bias is not None:
+        if module.bias is not None:  # Check if bias exists
+            nn.init.constant_(module.bias, 0)
+    elif isinstance(module, nn.Linear):
+        nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+        if module.bias is not None:  # Check if bias exists
             nn.init.constant_(module.bias, 0)
     elif isinstance(module, nn.BatchNorm2d):
         nn.init.constant_(module.weight, 1)
-        nn.init.constant_(module.bias, 0)
-    elif isinstance(module, nn.Linear):
-        nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
-        nn.init.constant_(module.bias, 0)
+        if module.bias is not None:  # Check if bias exists
+            nn.init.constant_(module.bias, 0)
+
+
 
 
 class EmbeddingGenerator(nn.Module):
@@ -89,6 +94,21 @@ class EmbeddingGenerator(nn.Module):
             nn.BatchNorm2d(embed_dim),
             activation()
         )
+
+        self.pe_layer = PositionEmbeddingRandom(embed_dim // 2)
+
+
+    def get_dense_pe(self) -> torch.Tensor:
+        """
+        Returns the positional encoding used to encode point prompts,
+        applied to a dense set of points the shape of the image encoding.
+
+        Returns:
+          torch.Tensor: Positional encoding with shape
+            1x(embed_dim)x(embedding_h)x(embedding_w)
+        """
+        return self.pe_layer(self.image_embedding_size).unsqueeze(0)
+    
 
     def forward(self, backbone_features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
