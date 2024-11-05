@@ -236,7 +236,7 @@ def load_video_frames_and_events(
             compute_device=compute_device,
         )
     elif is_str and os.path.isdir(video_path):
-        return load_video_frames_from_jpg_images(
+        return load_video_frames_and_events_from_jpg_images(
             video_path=video_path,
             image_size=image_size,
             offload_video_to_cpu=offload_video_to_cpu,
