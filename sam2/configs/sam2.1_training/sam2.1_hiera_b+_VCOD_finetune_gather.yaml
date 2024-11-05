@@ -231,7 +231,7 @@ trainer:
     use_act_ckpt_iterative_pt_sampling: false
     
 
-    freeze_image_encoder: True
+    freeze_image_encoder: False
     freeze_mask_decoder: False
     freeze_embedding_generator: False
 
@@ -342,11 +342,11 @@ trainer:
     all:
       _target_: training.loss_fns.MultiStepMultiMasksAndIous
       weight_dict:
-        loss_mask: 20
-        loss_struc: 1
+        loss_mask: 10
+        loss_struc: 0
         loss_dice: 10
-        loss_iou: 1
-        loss_class: 1
+        loss_iou: 0
+        loss_class: 0
       supervise_all_iou: true
       iou_use_l1_loss: true
       pred_obj_scores: true
