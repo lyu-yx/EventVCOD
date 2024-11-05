@@ -655,29 +655,15 @@ class SAM2Base(torch.nn.Module):
 
                 return pix_feat_with_mem, pix_feat_with_mem_event
 
-            # Use a dummy token on the first frame (to avoid empty memory input to tranformer encoder)
-            # base_memory_embed = self.no_mem_embed.view(1, 1, 64, 4).mean(dim=-1)  # Shape: (1, 1, 64)
-            # base_memory_pos_embed = self.no_mem_pos_enc.view(1, 1, 64, 4).mean(dim=-1)  # Shape: (1, 1, 64)
             
-            # Expand the reduced tensors to match the shape (1, B, 64) for each required variable
-            # to_cat_memory = [base_memory_embed.expand(1, B, self.mem_dim)]  
-            # to_cat_memory_pos_embed = [base_memory_pos_embed.expand(1, B, self.mem_dim)]  
-            # to_cat_memory_event = [base_memory_embed.expand(1, B, self.mem_dim)]  
-            # to_cat_memory_pos_embed_event = [base_memory_pos_embed.expand(1, B, self.mem_dim)]
-
             to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim)]
             to_cat_memory_pos_embed = [self.no_mem_pos_enc.expand(1, B, self.mem_dim)]
 
-            to_cat_memory_event = [self.no_mem_embed.expand(1, B, self.mem_dim)]
-            to_cat_memory_pos_embed_event = [self.no_mem_pos_enc.expand(1, B, self.mem_dim)]
 
         # Step 2: Concatenate the memories and forward through the transformer encoder
         memory = torch.cat(to_cat_memory, dim=0)
         memory_pos_embed = torch.cat(to_cat_memory_pos_embed, dim=0)
         
-        # memory_event = torch.cat(to_cat_memory_event, dim=0)
-        # memory_pos_embed_event = torch.cat(to_cat_memory_pos_embed_event, dim=0)
-
         
         pix_feat_with_mem = self.memory_attention(
             curr=current_vision_feats,
@@ -768,7 +754,6 @@ class SAM2Base(torch.nn.Module):
     ):
         
         # Todo: change this function to build the entire pipeline
-
         current_out = {"point_inputs": point_inputs, "mask_inputs": mask_inputs}
         # High-resolution feature maps for the SAM head, reshape (HW)BC => BCHW
         if len(current_vision_feats) > 1:
@@ -799,7 +784,6 @@ class SAM2Base(torch.nn.Module):
             )
         else:
             # fused the visual feature with previous memory features in the memory bank
-            
             pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
                 frame_idx=frame_idx,
                 is_init_cond_frame=is_init_cond_frame,
