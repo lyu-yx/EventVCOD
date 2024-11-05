@@ -80,8 +80,9 @@ class SAM2VideoPredictor(SAM2Base):
         # inputs on each frame
         inference_state["point_inputs_per_obj"] = {}
         inference_state["mask_inputs_per_obj"] = {}
-        # visual features on a small number of recently visited frames for quick interactions
+        # visual and event features on a small number of recently visited frames for quick interactions
         inference_state["cached_features"] = {}
+        inference_state["cached_features_event"] = {}
         # values that don't change across frames (so we only need to hold one copy of them)
         inference_state["constants"] = {}
         # mapping between client-side object id and model-side object index

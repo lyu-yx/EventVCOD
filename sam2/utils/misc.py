@@ -269,7 +269,7 @@ def load_video_frames_and_events_from_jpg_images(
     """
     if isinstance(video_path, str) and os.path.isdir(video_path):
         jpg_folder = video_path
-        frame_folder = os.path.join(jpg_folder, 'GT')
+        frame_folder = os.path.join(jpg_folder, 'Frame')
         event_folder = os.path.join(jpg_folder, 'Eventflow', 'red_blue_visualization')
     else:
         raise NotImplementedError(
@@ -297,8 +297,8 @@ def load_video_frames_and_events_from_jpg_images(
     num_frames = len(frame_names)
     if num_frames == 0:
         raise RuntimeError(f"no images found in {frame_names}")
-    img_paths = [os.path.join(frame_names, frame_name) for frame_name in frame_names]
-    evt_paths = [os.path.join(event_names, event_name) for event_name in event_names]
+    img_paths = [os.path.join(frame_folder, frame_name) for frame_name in frame_names]
+    evt_paths = [os.path.join(event_folder, event_name) for event_name in event_names]
 
     img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
     img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
