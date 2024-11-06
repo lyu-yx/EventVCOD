@@ -231,7 +231,7 @@ trainer:
     use_act_ckpt_iterative_pt_sampling: false
     
 
-    freeze_image_encoder: False
+    freeze_image_encoder: True
     freeze_mask_decoder: False
     freeze_embedding_generator: False
 
