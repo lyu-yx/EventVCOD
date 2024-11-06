@@ -350,8 +350,9 @@ class SAM2Base(torch.nn.Module):
             repeat_image=False,  # the image is already batched
             high_res_features=high_res_features,
         )
-        if self.pred_obj_scores:
+        if self.pred_obj_scores:  # predict if there is an object disappear in following frame
             is_obj_appearing = object_score_logits > 0
+            # print('object_score_logits > 0', object_score_logits > 0)
 
             # Mask used for spatial memories is always a *hard* choice between obj and no obj,
             # consistent with the actual mask prediction
