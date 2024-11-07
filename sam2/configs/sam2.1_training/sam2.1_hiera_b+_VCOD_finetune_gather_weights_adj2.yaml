@@ -280,7 +280,7 @@ trainer:
             num_frames: ${scratch.num_frames} # Number of frames per video
             max_num_objects: ${scratch.max_num_objects}
             reverse_time_prob: 0 # probability to reverse video
-          # multiplier: ${dataset.multiplier}
+          multiplier: ${dataset.multiplier}
           # transforms: ${video_transforms}
           
       shuffle: True
