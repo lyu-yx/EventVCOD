@@ -6,10 +6,10 @@ scratch:
   num_train_workers: 8
   num_frames: 8
   max_num_objects: 1
-  base_lr: 3.0e-4
-  vision_lr: 3.0e-06
+  base_lr: 5.0e-6
+  vision_lr: 3.0e-05
   phases_per_epoch: 1
-  num_epochs: 500
+  num_epochs: 300
 
 dataset:
   # PATHS to Dataset
@@ -62,7 +62,7 @@ trainer:
   seed_value: 123
 
   model:
-    _target_: training.model.sam2_vcod_prompt_generator_visionfeat_gather.SAM2TrainVCODPromptGenerator
+    _target_: training.model.sam2.SAM2Train
     image_encoder:
       _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
       scalp: 1
@@ -142,43 +142,6 @@ trainer:
           use_dwconv: True  # depth-wise convs
         num_layers: 2
 
-    short_long_relation_attention:
-      _target_: sam2.modeling.memory_attention.MemoryAttention
-      d_model: 256
-      pos_enc_at_input: true
-      layer:
-        _target_: sam2.modeling.memory_attention.MemoryAttentionLayer
-        activation: relu
-        dim_feedforward: 2048
-        dropout: 0.1
-        pos_enc_at_attn: false
-        self_attention:
-          _target_: sam2.modeling.sam.transformer.RoPEAttention
-          rope_theta: 10000.0
-          feat_sizes: [32, 32]
-          embedding_dim: 256
-          num_heads: 1
-          downsample_rate: 1
-          dropout: 0.1
-        d_model: 256
-        pos_enc_at_cross_attn_keys: true
-        pos_enc_at_cross_attn_queries: false
-        cross_attention:
-          _target_: sam2.modeling.sam.transformer.RoPEAttention
-          rope_theta: 10000.0
-          feat_sizes: [32, 32]
-          rope_k_repeat: True
-          embedding_dim: 256
-          num_heads: 1
-          downsample_rate: 1
-          dropout: 0.1
-          kv_in_dim: 64
-      num_layers: 4
-
-    feature_fusion:
-      _target_: sam2.modeling.feature_fusion.AdaptiveTemporalFusion
-      in_channels: 256
-
     num_maskmem: 7
     image_size: ${scratch.resolution}
     # apply scaled sigmoid on mask logits for memory encoder, and directly feed input mask as output mask
@@ -231,9 +194,6 @@ trainer:
     use_act_ckpt_iterative_pt_sampling: false
     
 
-    freeze_image_encoder: True
-    freeze_mask_decoder: False
-    freeze_embedding_generator: False
 
     
     num_init_cond_frames_for_eval: 1  # only mask on the first frame
@@ -272,15 +232,13 @@ trainer:
             _target_: training.dataset.vos_raw_dataset.VCODDataset
             img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
             gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
-            eventflow_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
-            # file_list_txt: None
-            # ann_every: 4
+            
           sampler:
             _target_: training.dataset.vos_sampler.RandomUniformSampler
             num_frames: ${scratch.num_frames} # Number of frames per video
             max_num_objects: ${scratch.max_num_objects}
             reverse_time_prob: 0 # probability to reverse video
-          # multiplier: ${dataset.multiplier}
+          
           # transforms: ${video_transforms}
           
       shuffle: True
@@ -327,9 +285,6 @@ trainer:
             end_value: ${divide:${scratch.vision_lr},10}
           param_names:
             - 'image_encoder.*'
-            - 'memory_attention.*'
-            - 'memory_encoder.*'
-
       weight_decay:
         - scheduler:
             _target_: fvcore.common.param_scheduler.ConstantParamScheduler
@@ -376,7 +331,7 @@ trainer:
     model_weight_initializer:
       _partial_: True
       _target_: training.utils.checkpoint_utils.load_state_dict_into_model
-      strict: False
+      strict: True
       ignore_unexpected_keys: null
       ignore_missing_keys: null
 
@@ -388,7 +343,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather_weight_adj/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/ablation/sam2base/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:

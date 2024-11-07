@@ -805,7 +805,7 @@ class SAM2Base(torch.nn.Module):
             # print('pix_feat sz', pix_feat.size)
             # print('pix_feat_short_long sz', pix_feat_short_long.size)
 
-            pix_feat = self.feature_fusion(pix_feat, pix_feat_short_long)
+            # pix_feat = self.feature_fusion(pix_feat, pix_feat_short_long)
 
             # apply SAM-style segmentation head
             # here we might feed previously predicted low-res SAM mask logits into the SAM mask decoder,

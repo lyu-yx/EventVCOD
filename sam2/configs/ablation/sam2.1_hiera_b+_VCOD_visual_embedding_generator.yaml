@@ -6,10 +6,10 @@ scratch:
   num_train_workers: 8
   num_frames: 8
   max_num_objects: 1
-  base_lr: 3.0e-4
-  vision_lr: 3.0e-06
+  base_lr: 5.0e-5
+  vision_lr: 3.0e-05
   phases_per_epoch: 1
-  num_epochs: 500
+  num_epochs: 800
 
 dataset:
   # PATHS to Dataset
@@ -280,7 +280,7 @@ trainer:
             num_frames: ${scratch.num_frames} # Number of frames per video
             max_num_objects: ${scratch.max_num_objects}
             reverse_time_prob: 0 # probability to reverse video
-          # multiplier: ${dataset.multiplier}
+          multiplier: ${dataset.multiplier}
           # transforms: ${video_transforms}
           
       shuffle: True
@@ -327,9 +327,6 @@ trainer:
             end_value: ${divide:${scratch.vision_lr},10}
           param_names:
             - 'image_encoder.*'
-            - 'memory_attention.*'
-            - 'memory_encoder.*'
-
       weight_decay:
         - scheduler:
             _target_: fvcore.common.param_scheduler.ConstantParamScheduler
@@ -388,7 +385,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather_weight_adj/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
