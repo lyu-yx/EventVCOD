@@ -6,10 +6,10 @@ scratch:
   num_train_workers: 8
   num_frames: 8
   max_num_objects: 1
-  base_lr: 5.0e-5
+  base_lr: 1.0e-4
   vision_lr: 3.0e-05
   phases_per_epoch: 1
-  num_epochs: 500
+  num_epochs: 300
 
 dataset:
   # PATHS to Dataset
@@ -320,7 +320,7 @@ trainer:
         - scheduler:
             _target_: fvcore.common.param_scheduler.CosineParamScheduler
             start_value: ${scratch.base_lr}
-            end_value: ${divide:${scratch.base_lr},10}
+            end_value: ${divide:${scratch.base_lr},20}
         - scheduler:
             _target_: fvcore.common.param_scheduler.CosineParamScheduler
             start_value: ${scratch.vision_lr}
@@ -345,8 +345,8 @@ trainer:
         loss_mask: 20
         loss_struc: 1
         loss_dice: 1
-        loss_iou: 5
-        loss_class: 5
+        loss_iou: 2
+        loss_class: 2
       supervise_all_iou: true
       iou_use_l1_loss: true
       pred_obj_scores: true
