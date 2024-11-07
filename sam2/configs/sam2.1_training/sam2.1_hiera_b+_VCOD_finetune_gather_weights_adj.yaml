@@ -6,10 +6,10 @@ scratch:
   num_train_workers: 8
   num_frames: 8
   max_num_objects: 1
-  base_lr: 1.0e-4
-  vision_lr: 3.0e-05
+  base_lr: 3.0e-4
+  vision_lr: 3.0e-06
   phases_per_epoch: 1
-  num_epochs: 300
+  num_epochs: 500
 
 dataset:
   # PATHS to Dataset
@@ -280,7 +280,7 @@ trainer:
             num_frames: ${scratch.num_frames} # Number of frames per video
             max_num_objects: ${scratch.max_num_objects}
             reverse_time_prob: 0 # probability to reverse video
-          multiplier: ${dataset.multiplier}
+          # multiplier: ${dataset.multiplier}
           # transforms: ${video_transforms}
           
       shuffle: True
@@ -320,13 +320,18 @@ trainer:
         - scheduler:
             _target_: fvcore.common.param_scheduler.CosineParamScheduler
             start_value: ${scratch.base_lr}
-            end_value: ${divide:${scratch.base_lr},20}
+            end_value: ${divide:${scratch.base_lr},10}
         - scheduler:
             _target_: fvcore.common.param_scheduler.CosineParamScheduler
             start_value: ${scratch.vision_lr}
             end_value: ${divide:${scratch.vision_lr},10}
           param_names:
             - 'image_encoder.*'
+            - 'memory_attention.*'
+            - 'memory_encoder.*'
+            - 'mask_decoder.*'
+            - 'memory_encoder.*'
+            
       weight_decay:
         - scheduler:
             _target_: fvcore.common.param_scheduler.ConstantParamScheduler
@@ -345,8 +350,8 @@ trainer:
         loss_mask: 20
         loss_struc: 1
         loss_dice: 1
-        loss_iou: 2
-        loss_class: 2
+        loss_iou: 1
+        loss_class: 1
       supervise_all_iou: true
       iou_use_l1_loss: true
       pred_obj_scores: true
