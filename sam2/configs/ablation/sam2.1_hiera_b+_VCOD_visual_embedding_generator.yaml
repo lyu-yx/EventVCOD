@@ -6,7 +6,7 @@ scratch:
   num_train_workers: 8
   num_frames: 8
   max_num_objects: 1
-  base_lr: 5.0e-5
+  base_lr: 5.0e-6
   vision_lr: 3.0e-05
   phases_per_epoch: 1
   num_epochs: 800
