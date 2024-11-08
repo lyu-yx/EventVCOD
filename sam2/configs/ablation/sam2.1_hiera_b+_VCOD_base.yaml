@@ -232,7 +232,7 @@ trainer:
             _target_: training.dataset.vos_raw_dataset.VCODDataset
             img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
             gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
-            
+            eventflow_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
           sampler:
             _target_: training.dataset.vos_sampler.RandomUniformSampler
             num_frames: ${scratch.num_frames} # Number of frames per video

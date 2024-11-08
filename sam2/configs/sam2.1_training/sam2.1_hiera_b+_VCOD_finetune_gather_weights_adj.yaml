@@ -327,8 +327,7 @@ trainer:
             end_value: ${divide:${scratch.vision_lr},10}
           param_names:
             - 'image_encoder.*'
-            - 'memory_attention.*'
-            - 'memory_encoder.*'
+
 
       weight_decay:
         - scheduler:
