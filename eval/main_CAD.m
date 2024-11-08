@@ -48,7 +48,7 @@ for  m = 1:length(Models)
             
             seqfolder = seqFiles(seqnum+2).name;
             
-            gt_imgPath = [seqPath seqfolder '/groundtruth/'];
+            gt_imgPath = [seqPath seqfolder '/GT/'];
             [fileNUM, gt_imgFiles, fileExt] = calculateNumber(gt_imgPath); %index of stop frame
 
             resPath = [resVideoPath seqfolder ]; %'/Pred/'
