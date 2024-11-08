@@ -9,7 +9,7 @@ scratch:
   base_lr: 3.0e-4
   vision_lr: 3.0e-06
   phases_per_epoch: 1
-  num_epochs: 120
+  num_epochs: 
 
 dataset:
   # PATHS to Dataset

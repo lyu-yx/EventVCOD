@@ -1,13 +1,11 @@
 clear; close; clc;
 % set the path of sal/gt/results
-salDir = '/scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather/results/MoCA/'; %MoCA
-Models = {'EventVCOD_gather_weightadj_inference'};
-gtDir = '/scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Test'; 
-Datasets = {'/scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Test'}; %ValDataset_per_sq TestDataset_per_sq
-Results_Save_Path = './Result/MoCA-Mask_eva/';
+salDir = 'results/MoCA/'; %MoCA
+Models = {'MoCA_70', 'MoCA_adj2_200'};
+gtDir = 'D:/Dateset/MoCA-Mask-Pseudo/';
+Datasets = {'MoCA-Video-Test'}; %ValDataset_per_sq TestDataset_per_sq
+Results_Save_Path = './results/MoCA-Mask_eva/';
 
-img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
-gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
 Thresholds = 1:-1/255:0;
 
 for  m = 1:length(Models)
@@ -51,7 +49,7 @@ for  m = 1:length(Models)
             gt_imgPath = [seqPath seqfolder '/GT/'];
             [fileNUM, gt_imgFiles, fileExt] = calculateNumber(gt_imgPath); %index of stop frame
 
-            resPath = [resVideoPath seqfolder ]; %'/Pred/'
+            resPath = [resVideoPath seqfolder '/' ]; %'/Pred/'
             fileNUM = fileNUM-2; %remove last two frame to match the video results
 
             [threshold_Fmeasure, threshold_Emeasure, threshold_IoU] = deal(zeros(fileNUM, length(Thresholds)));
@@ -63,6 +61,7 @@ for  m = 1:length(Models)
             for i = 1:fileNUM %skip the first and last gt file for some of the light-flow based method
                 
                 name = char(gt_imgFiles{i});
+                
                 fprintf('[Processing Info] Model: %s, Dataset: %s, SalSeq: %s (%d/%d), SalMapName: %s (%d/%d)\n',modelName, videofolder, seqfolder, seqnum, seqNUM, name, i, fileNUM);
 
                 %load gt
@@ -77,8 +76,8 @@ for  m = 1:length(Models)
                 end
 
                 %load resMap
-                %resname = strrep(name,'png', 'jpg');
-                resmap  = imread([resPath name]);
+                resname = strrep(name,'png', 'jpg');
+                resmap  = imread([resPath resname]);
                 %check size
                 if size(resmap, 1) ~= size(gt, 1) || size(resmap, 2) ~= size(gt, 2)
                     resmap = imresize(resmap,size(gt));

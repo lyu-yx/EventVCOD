@@ -12,3 +12,4 @@ figs/*
 *.mp4
 demo/*
 notebooks/*
+results/*
