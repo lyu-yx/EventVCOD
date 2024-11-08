@@ -9,7 +9,7 @@ scratch:
   base_lr: 3.0e-4
   vision_lr: 3.0e-06
   phases_per_epoch: 1
-  num_epochs: 500
+  num_epochs: 120
 
 dataset:
   # PATHS to Dataset
@@ -329,7 +329,7 @@ trainer:
             - 'image_encoder.*'
             - 'memory_attention.*'
             - 'memory_encoder.*'
-
+            
       weight_decay:
         - scheduler:
             _target_: fvcore.common.param_scheduler.ConstantParamScheduler
@@ -373,6 +373,7 @@ trainer:
   checkpoint:
     save_dir: ${launcher.experiment_log_dir}/checkpoints
     save_freq: 10 # 0 only last checkpoint is saved.
+    save_list: [65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80]
     model_weight_initializer:
       _partial_: True
       _target_: training.utils.checkpoint_utils.load_state_dict_into_model
@@ -388,7 +389,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather_weight_adj/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather_weight_adj3/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
