@@ -1,11 +1,11 @@
 clear; close; clc;
 % set the path of sal/gt/results
-salDir = '../res/CAD2016/'; %MoCA_pseudo
-Models = {'Ours_long_term'};  
+salDir = '/scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather/results/CAD2016'; %MoCA_pseudo
+Models = {'sam2.1_hiera_b+_visionfeat_gather'};  
 %'
-gtDir = '../dataset/CamouflagedAnimalDataset/'; 
-Datasets = {'new_gt'}; %sequences
-Results_Save_Path = './Result/CAD/';
+gtDir = './scratch/hp2173/EventVCOD/datasets/CAD2016'; 
+Datasets = {'CAD'}; %sequences
+Results_Save_Path = '/scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather/results/CAD2016';
 
 
 Thresholds = 1:-1/255:0;
@@ -51,7 +51,7 @@ for  m = 1:length(Models)
             gt_imgPath = [seqPath seqfolder '/groundtruth/'];
             [fileNUM, gt_imgFiles, fileExt] = calculateNumber(gt_imgPath); %index of stop frame
 
-            resPath = [resVideoPath seqfolder '/Pred/']; %'/Pred/'
+            resPath = [resVideoPath seqfolder ]; %'/Pred/'
             %fileNUM = fileNUM-2; %remove last two frame to match the video results
 
             [threshold_Fmeasure, threshold_Emeasure, threshold_IoU] = deal(zeros(fileNUM, length(Thresholds)));
