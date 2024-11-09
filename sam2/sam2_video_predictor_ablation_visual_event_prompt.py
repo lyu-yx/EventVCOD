@@ -11,7 +11,7 @@ import torch
 
 from tqdm import tqdm
 
-from sam2.modeling.sam2_base_prompt_generator_visionfeat_gather import NO_OBJ_SCORE, SAM2Base
+from sam2.modeling.ablation.sam2_base_visual_event_prompt import NO_OBJ_SCORE, SAM2Base
 from sam2.utils.misc import concat_points, fill_holes_in_mask_scores, load_video_frames_and_events
 
 
@@ -125,7 +125,7 @@ class SAM2VideoPredictor(SAM2Base):
         Returns:
           (SAM2VideoPredictor): The loaded model.
         """
-        from sam2.build_sam_gather import build_sam2_video_predictor_hf
+        from sam2.build_sam_ablation_visual_event_prompt import build_sam2_video_predictor_hf
 
         sam_model = build_sam2_video_predictor_hf(model_id, **kwargs)
         return sam_model
