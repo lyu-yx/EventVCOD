@@ -210,6 +210,7 @@ class PyramidPooling(nn.Module):
         return torch.cat(features, dim=1)
 
 
+
 class EmbeddingGeneratorRes(nn.Module):
     def __init__(
         self,
@@ -218,54 +219,51 @@ class EmbeddingGeneratorRes(nn.Module):
         input_image_size: Tuple[int, int],
         mask_in_chans: int,
         activation: Type[nn.Module] = nn.GELU,
+        window_size: int = 8  # Define window size for local attention
     ) -> None:
-        """
-        Generates embeddings for promptless SAM mask generation, specialized for camouflage detection.
-        
-        Arguments:
-          embed_dim (int): Embedding dimension for mask generation.
-          image_embedding_size (tuple(int, int)): The spatial size of the image embedding, as (H, W).
-          mask_in_chans (int): The number of hidden channels used for encoding input masks.
-          activation (nn.Module): The activation function for encoding layers.
-        """
         super().__init__()
 
         self.embed_dim = embed_dim
         self.image_embedding_size = image_embedding_size
         self.input_image_size = input_image_size
         self.activation = activation()
-        
+        self.window_size = window_size  # Local attention window size
+
         # Multi-scale feature refinement with FPN (CBR layers)
+        self.fpn_channels = mask_in_chans // 2  # Reduced channel size for FPN
         self.fpn = nn.ModuleList([
             nn.Sequential(
-                nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=rate, dilation=rate),
-                nn.BatchNorm2d(mask_in_chans),
+                nn.Conv2d(mask_in_chans, self.fpn_channels, kernel_size=3, padding=rate, dilation=rate),
+                nn.BatchNorm2d(self.fpn_channels),
                 activation()
             ) for rate in [1, 2, 4, 8]
         ])
-        
-        # Self-Attention Module for refining feature map
-        self.self_attention = nn.MultiheadAttention(embed_dim=mask_in_chans, num_heads=4, batch_first=True)
+
+        # Adjust the channels of backbone_features to match fpn output channels for residual connection
+        self.channel_adjustment = nn.Conv2d(mask_in_chans, self.fpn_channels, kernel_size=1)
+
+        # Define self-attention module for local self-attention within windows
+        self.self_attention = nn.MultiheadAttention(embed_dim=self.fpn_channels, num_heads=4, batch_first=True)
 
         # Gated Mechanism for Spatial Relevance
         self.gated_attention = nn.Sequential(
-            nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=1),
+            nn.Conv2d(self.fpn_channels, self.fpn_channels, kernel_size=3, padding=1),
             nn.Sigmoid()
         )
-        
+
         # Global Context Block for sparse embedding
         self.global_context = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(mask_in_chans, embed_dim, kernel_size=1),
+            nn.Conv2d(self.fpn_channels, embed_dim, kernel_size=1),
             activation()
         )
-        
-        # Dense embedder with residual blocks and self-attention
+
+        # Dense embedder with residual blocks
         self.dense_embedder = nn.Sequential(
-            ResidualBlock(mask_in_chans, mask_in_chans, activation),
-            nn.Conv2d(mask_in_chans, embed_dim, kernel_size=1)
+            ResidualBlock(self.fpn_channels, self.fpn_channels, activation),
+            nn.Conv2d(self.fpn_channels, embed_dim, kernel_size=1)
         )
-        
+
         # Final refinement layer for dense embedding
         self.refinement = nn.Sequential(
             nn.Conv2d(embed_dim, embed_dim, kernel_size=3, padding=1),
@@ -275,54 +273,66 @@ class EmbeddingGeneratorRes(nn.Module):
 
         self.pe_layer = PositionEmbeddingRandom(embed_dim // 2)
 
-
     def get_dense_pe(self) -> torch.Tensor:
-        """
-        Returns the positional encoding used to encode point prompts,
-        applied to a dense set of points the shape of the image encoding.
-
-        Returns:
-          torch.Tensor: Positional encoding with shape
-            1x(embed_dim)x(embedding_h)x(embedding_w)
-        """
         return self.pe_layer(self.image_embedding_size).unsqueeze(0)
-    
-    def forward(self, backbone_features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Generate sparse and dense embeddings from backbone features.
-        
-        Args:
-            backbone_features (torch.Tensor): Features from backbone [B, C, H, W]
-            
-        Returns:
-            tuple: (sparse_embeddings, dense_embeddings)
-                - sparse_embeddings: [B, 1, embed_dim]
-                - dense_embeddings: [B, embed_dim, H, W]
-        """
-        # Multi-scale feature processing using FPN
-        multiscale_features = []
-        for layer in self.fpn:
-            # Apply the layer and add the input (residual connection)
-            scale_output = layer(backbone_features)
-            multiscale_features.append(scale_output + backbone_features)  # Residual connection
-        multiscale_output = torch.sum(torch.stack(multiscale_features), dim=0)
 
-        # Self-Attention Mechanism
-        b, c, h, w = multiscale_output.size()
-        features_flat = multiscale_output.flatten(2).permute(0, 2, 1)  # Flatten and permute for attention
-        features_attention, _ = self.self_attention(features_flat, features_flat, features_flat)
-        features_attention = features_attention.permute(0, 2, 1).view(b, c, h, w)  # Reshape back
+    def window_partition(self, x, window_size):
+        """
+        Partitions the feature map into non-overlapping windows of size `window_size x window_size`.
+        """
+        B, C, H, W = x.shape
+        x = x.view(B, C, H // window_size, window_size, W // window_size, window_size)
+        windows = x.permute(0, 2, 4, 1, 3, 5).reshape(-1, C, window_size, window_size)
+        return windows
+
+    def window_unpartition(self, windows, window_size, H, W):
+        """
+        Reconstructs the feature map from windows to its original shape.
+        """
+        B = windows.shape[0] // (H // window_size * W // window_size)
+        x = windows.view(B, H // window_size, W // window_size, -1, window_size, window_size)
+        x = x.permute(0, 3, 1, 4, 2, 5).reshape(B, -1, H, W)
+        return x
+
+    def local_self_attention(self, x):
+        """
+        Applies self-attention within local windows.
+        """
+        B, C, H, W = x.shape
+        windows = self.window_partition(x, self.window_size)  # Shape: (num_windows * B, C, window_size, window_size)
+        windows = windows.flatten(2).transpose(1, 2)  # Shape: (num_windows * B, window_size * window_size, C)
+
+        # Apply self-attention to each window
+        attn_windows, _ = self.self_attention(windows, windows, windows)  # Local self-attention
+        attn_windows = attn_windows.transpose(1, 2).view(-1, C, self.window_size, self.window_size)
+
+        # Reconstruct the feature map from the windows
+        x = self.window_unpartition(attn_windows, self.window_size, H, W)
+        return x
+
+    def forward(self, backbone_features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        # Adjust backbone feature channels to match fpn output channels for residual connection
+        adjusted_backbone_features = self.channel_adjustment(backbone_features)
+
+        # Multi-scale feature processing using FPN with residual connections
+        multiscale_output = 0  # Initialize for sum accumulation
+        for layer in self.fpn:
+            scale_output = layer(backbone_features)
+            multiscale_output += scale_output + adjusted_backbone_features  # Residual connection
+
+        # Apply local self-attention
+        features_attention = self.local_self_attention(multiscale_output)
 
         # Gated attention mechanism
         gated_features = self.gated_attention(features_attention) * multiscale_output
 
         # Generate dense embeddings
         dense_embeddings = self.dense_embedder(gated_features)
-        dense_embeddings = self.refinement(dense_embeddings)  # [B, embed_dim, H, W]
+        dense_embeddings = self.refinement(dense_embeddings)
 
         # Generate sparse embeddings using global context
-        sparse_embeddings = self.global_context(gated_features)  # [B, embed_dim, 1, 1]
-        sparse_embeddings = sparse_embeddings.flatten(2).transpose(1, 2)  # Reshape to [B, 1, embed_dim]
+        sparse_embeddings = self.global_context(gated_features)
+        sparse_embeddings = sparse_embeddings.flatten(2).transpose(1, 2)  # Shape [B, 1, embed_dim]
 
         return sparse_embeddings, dense_embeddings
 
