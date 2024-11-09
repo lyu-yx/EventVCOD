@@ -1,5 +1,17 @@
 # @package _global_
+# @package _global_
+scratch:
+  resolution: 1024
+  train_batch_size: 1
+  num_train_workers: 8
+  num_frames: 8
+  max_num_objects: 1
+  base_lr: 5.0e-6
+  vision_lr: 3.0e-05
+  phases_per_epoch: 1
+  num_epochs: 300
 
+  
 model:
   _target_: training.model.ablation.sam2_vcod_prompt_generator_visual_embedding.SAM2TrainVCODPromptGenerator
   image_encoder:
