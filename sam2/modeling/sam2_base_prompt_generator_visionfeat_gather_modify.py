@@ -244,7 +244,7 @@ class SAM2Base(torch.nn.Module):
             mask_in_chans=self.hidden_dim,
         )
 
-        self.embedding_generator.apply(initialize_embedding_generator)
+        # self.embedding_generator.apply(initialize_embedding_generator)
         
         self.sam_mask_decoder = MaskDecoder(
             num_multimask_outputs=3,
