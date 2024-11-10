@@ -406,16 +406,17 @@ class SAM2Base(torch.nn.Module):
         boxes = self.kan_model(flatten_backbone_features)
 
         # can add the box loss for supervising here
-
+        bbox_preds = boxes
 
         # no mask and point input
-        sam_point_coords = torch.zeros(B, 1, 2, device=device)
-        sam_point_labels = -torch.ones(B, 1, dtype=torch.int32, device=device)
-        sam_mask_prompt = None
+        sam_point_coords = boxes.view(B, 2, 2)
+        sam_point_labels = torch.tensor([2, 3], dtype=torch.int32).repeat(B, 1)
+        # sam_point_labels = -torch.ones(B, 1, dtype=torch.int32, device=device)
+        # sam_mask_prompt = None
 
         sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
             points=(sam_point_coords, sam_point_labels),
-            boxes=boxes,
+            boxes=None,
             masks=sam_mask_prompt,
         )
 
@@ -490,6 +491,7 @@ class SAM2Base(torch.nn.Module):
             high_res_masks,
             obj_ptr,
             object_score_logits,
+            bbox_preds,
         )
 
     def _use_mask_as_output(self, backbone_features, backbone_features_event, high_res_features, high_res_event_features, mask_inputs):
@@ -517,7 +519,7 @@ class SAM2Base(torch.nn.Module):
             )
         else:
             # produce an object pointer using the SAM decoder from the mask input
-            _, _, _, _, _, obj_ptr, _ = self._forward_sam_heads(
+            _, _, _, _, _, obj_ptr, _, _ = self._forward_sam_heads(
                 backbone_features=backbone_features,
                 mask_inputs=self.mask_downsample(mask_inputs_float),
                 high_res_features=high_res_features,

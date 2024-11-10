@@ -129,9 +129,9 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         backbone_out_img = self.prepare_prompt_inputs(backbone_out_img, input)
         backbone_out_event = self.prepare_prompt_inputs(backbone_out_event, input)
 
-        previous_stages_out = self.forward_tracking(backbone_out_img, backbone_out_event, input)
+        previous_stages_out, bbox_preds = self.forward_tracking(backbone_out_img, backbone_out_event, input)
 
-        return previous_stages_out
+        return previous_stages_out, bbox_preds
 
     def _prepare_backbone_features_per_frame(self, img_batch, event_batch, img_ids):
         """Compute the image backbone features on the fly for the given img_ids."""
@@ -394,7 +394,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             {k: v for k, v in d.items() if k != "obj_ptr"} for d in all_frame_outputs
         ]
 
-        return all_frame_outputs
+        bbox_preds = current_out["bbox_preds"]
+        return all_frame_outputs, bbox_preds
 
     def track_step(
         self,
@@ -441,6 +442,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             high_res_masks,
             obj_ptr,
             object_score_logits,
+            bbox_preds,
         ) = sam_outputs
 
         current_out["multistep_pred_masks"] = low_res_masks
@@ -481,7 +483,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         current_out["pred_masks"] = low_res_masks
         current_out["pred_masks_high_res"] = high_res_masks
         current_out["obj_ptr"] = obj_ptr
-
+        current_out["bbox_preds"] = bbox_preds
         # Finally run the memory encoder on the predicted mask to encode
         # it into a new memory feature (that can be used in future frames)
         self._encode_memory_in_output(
@@ -567,6 +569,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 high_res_masks,
                 _,
                 object_score_logits,
+                bbox_preds,
             ) = sam_outputs
             all_pred_masks.append(low_res_masks)
             all_pred_high_res_masks.append(high_res_masks)

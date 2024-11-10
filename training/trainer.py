@@ -456,7 +456,8 @@ class Trainer:
         phase: str,
     ):
         
-        outputs = model(batch)
+        outputs, bbox = model(batch)
+        # outputs = model(batch)
         targets = batch.masks
         batch_size = len(batch.img_batch)
 
