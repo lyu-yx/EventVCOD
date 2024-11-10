@@ -477,6 +477,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 high_res_masks,
                 obj_ptr,
                 object_score_logits,
+                _,
             ) = final_sam_outputs
 
         # Use the final prediction (after all correction steps for output and eval)

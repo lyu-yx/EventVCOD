@@ -193,7 +193,7 @@ trainer:
     num_correction_pt_per_frame: 7
     use_act_ckpt_iterative_pt_sampling: false
     
-
+    freeze_image_encoder: True
 
     
     num_init_cond_frames_for_eval: 1  # only mask on the first frame
