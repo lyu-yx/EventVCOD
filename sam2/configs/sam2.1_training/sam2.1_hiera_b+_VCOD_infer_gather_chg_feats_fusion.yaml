@@ -116,7 +116,7 @@ model:
     num_layers: 4
 
   feature_fusion:
-    _target_: sam2.modeling.feature_fusion.AdaptiveTemporalFusion
+    _target_: sam2.modeling.feature_fusion_4_feats.AdaptiveTemporalFusion
     in_channels: 256
 
   num_maskmem: 7
