@@ -254,7 +254,7 @@ class SAM2Base(torch.nn.Module):
 
         # self.embedding_generator.apply(initialize_embedding_generator)
         self.kan_model = KAN(
-            layers_hidden=[64 * 64, 128, 64, 4],  # Adjust input dimension
+            layers_hidden=[64 * 64, 64, 4],  # Adjust input dimension
             grid_size=5,
             spline_order=3,
             scale_noise=0.1,
@@ -265,10 +265,7 @@ class SAM2Base(torch.nn.Module):
             grid_range=[-1, 1],
         )
 
-        self.dimensional_reduction = torch.nn.Sequential(
-            DimensionalReduction(in_channel=256, out_channel=64),
-            DimensionalReduction(in_channel=64, out_channel=1)
-        )
+        self.dimensional_reduction = DimensionalReduction(in_channel=256, out_channel=1)
 
         self.sam_prompt_encoder = PromptEncoder(
             embed_dim=self.sam_prompt_embed_dim,
@@ -400,7 +397,7 @@ class SAM2Base(torch.nn.Module):
         flatten_backbone_features = self.dimensional_reduction(backbone_features).flatten(2)
         # sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features)
         boxes = self.kan_model(flatten_backbone_features)
-        
+
         # can add the box loss for supervising here
 
 
