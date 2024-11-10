@@ -7,6 +7,7 @@
 import torch
 import torch.distributed
 import torch.nn.functional as F
+import torch.nn as nn
 
 from torch.nn.init import trunc_normal_
 
@@ -253,8 +254,11 @@ class SAM2Base(torch.nn.Module):
         # )
 
         # self.embedding_generator.apply(initialize_embedding_generator)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)  # [B, 256, 32, 32]
+        # self.pool = nn.MaxPool2d(kernel_size=4, stride=4)  # for [B, 256, 16, 16]
+        
         self.kan_model = KAN(
-            layers_hidden=[64 * 64, 64, 4],  # Adjust input dimension
+            layers_hidden=[32*32, 64, 4],  # Adjust input dimension
             grid_size=5,
             spline_order=3,
             scale_noise=0.1,
@@ -265,7 +269,10 @@ class SAM2Base(torch.nn.Module):
             grid_range=[-1, 1],
         )
 
-        self.dimensional_reduction = DimensionalReduction(in_channel=256, out_channel=1)
+        self.dimensional_reduction = nn.Sequential(
+            DimensionalReduction(in_channel=256, out_channel=64),
+            DimensionalReduction(in_channel=64, out_channel=1)
+        )
 
         self.sam_prompt_encoder = PromptEncoder(
             embed_dim=self.sam_prompt_embed_dim,
@@ -393,8 +400,8 @@ class SAM2Base(torch.nn.Module):
             # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None
 
-
-        flatten_backbone_features = self.dimensional_reduction(backbone_features).flatten(2)
+        flatten_backbone_features = self.pool(backbone_features)
+        flatten_backbone_features = self.dimensional_reduction(flatten_backbone_features).flatten(2)
         # sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features)
         boxes = self.kan_model(flatten_backbone_features)
 
