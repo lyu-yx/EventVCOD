@@ -984,6 +984,7 @@ class SAM2Base(torch.nn.Module):
             high_res_masks,
             obj_ptr,
             object_score_logits,
+            _,
         ) = sam_outputs
 
         current_out["pred_masks"] = low_res_masks

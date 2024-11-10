@@ -7,6 +7,7 @@
 import torch
 import torch.distributed
 import torch.nn.functional as F
+import torch.nn as nn
 
 from torch.nn.init import trunc_normal_
 
@@ -18,6 +19,7 @@ from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_fr
 from sam2.modeling.sam.embedding_generator import initialize_embedding_generator
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
 from prompt_gen.kan_box_predictor import KANBBoxPredictorVisionFeat
+from prompt_gen.kan import KAN, DimensionalReduction
 # from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
 # a large negative value as a placeholder score for missing objects
@@ -239,7 +241,7 @@ class SAM2Base(torch.nn.Module):
 
         # directly generate embeddings from image features
 
-        self.prompt_gen = KANBBoxPredictorVisionFeat(input_dim=256, hidden_dim=128, num_components=4)
+        # self.prompt_gen = KANBBoxPredictorVisionFeat(input_dim=256, hidden_dim=128, num_components=4)
 
         # self.embedding_generator = EmbeddingGenerator(
         #     embed_dim=self.sam_prompt_embed_dim,
@@ -252,6 +254,26 @@ class SAM2Base(torch.nn.Module):
         # )
 
         # self.embedding_generator.apply(initialize_embedding_generator)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)  # [B, 256, 32, 32]
+        # self.pool = nn.MaxPool2d(kernel_size=4, stride=4)  # for [B, 256, 16, 16]
+        
+        self.kan_model = KAN(
+            layers_hidden=[32*32, 64, 4],  # Adjust input dimension
+            grid_size=5,
+            spline_order=3,
+            scale_noise=0.1,
+            scale_base=1.0,
+            scale_spline=1.0,
+            base_activation=torch.nn.SiLU,
+            grid_eps=0.02,
+            grid_range=[-1, 1],
+        )
+
+        self.dimensional_reduction = nn.Sequential(
+            DimensionalReduction(in_channel=256, out_channel=64),
+            DimensionalReduction(in_channel=64, out_channel=1)
+        )
+
         self.sam_prompt_encoder = PromptEncoder(
             embed_dim=self.sam_prompt_embed_dim,
             image_embedding_size=(
@@ -378,13 +400,14 @@ class SAM2Base(torch.nn.Module):
             # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None
 
+        flatten_backbone_features = self.pool(backbone_features)
+        flatten_backbone_features = self.dimensional_reduction(flatten_backbone_features).flatten(2)
         # sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features)
-        
-        boxes = self.prompt_gen(backbone_features)
-        
+        boxes = self.kan_model(flatten_backbone_features)
+
         # can add the box loss for supervising here
         bbox_preds = boxes
-        
+
         # no mask and point input
         sam_point_coords = boxes.view(B, 2, 2)
         sam_point_labels = torch.tensor([2, 3], dtype=torch.int32).repeat(B, 1)
@@ -869,8 +892,9 @@ class SAM2Base(torch.nn.Module):
             # print('pix_feat sz', pix_feat.size)
             # print('pix_feat_short_long sz', pix_feat_short_long.size)
 
-            pix_feat = self.feature_fusion(pix_feat, pix_feat_short_long)
-
+            
+            fused_feature = self.feature_fusion(pix_feat, pix_feat_short_long)
+            pix_feat = pix_feat + fused_feature
             # apply SAM-style segmentation head
             # here we might feed previously predicted low-res SAM mask logits into the SAM mask decoder,
             # e.g. in demo where such logits come from earlier interaction instead of correction sampling
