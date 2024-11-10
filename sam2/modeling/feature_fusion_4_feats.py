@@ -70,7 +70,7 @@ class AdaptiveTemporalFusion(nn.Module):
         
         # Feature refinement
         self.refinement = nn.Sequential(
-            nn.Conv2d(in_channels*3, in_channels, 1),  # Reduce channels first
+            nn.Conv2d(in_channels*4, in_channels, 1),  # Reduce channels first
             nn.BatchNorm2d(in_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(in_channels, in_channels, 3, padding=1),
