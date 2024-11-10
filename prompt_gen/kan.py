@@ -278,8 +278,8 @@ class DimensionalReduction(nn.Module):
     def __init__(self, in_channel, out_channel):
         super(DimensionalReduction, self).__init__()
         self.reduce = nn.Sequential(
-            ConvBR(in_channel, in_channel/2, 3, padding=1),
-            ConvBR(in_channel/2, out_channel, 3, padding=1)
+            ConvBR(in_channel, in_channel//2, 3, padding=1),
+            ConvBR(in_channel//2, out_channel, 3, padding=1)
         )
 
     def forward(self, x):
