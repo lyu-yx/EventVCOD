@@ -70,7 +70,7 @@ class AdaptiveTemporalFusion(nn.Module):
         
         # Feature refinement
         self.refinement = nn.Sequential(
-            nn.Conv2d(in_channels*3, in_channels, 1),  # Reduce channels first
+            nn.Conv2d(in_channels*4, in_channels, 1),  # Reduce channels first
             nn.BatchNorm2d(in_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(in_channels, in_channels, 3, padding=1),
@@ -90,7 +90,7 @@ class AdaptiveTemporalFusion(nn.Module):
         balanced_feat = self.temporal_gate(pix_feat, pix_feat_short_long)
         
         # 2. Motion-enhanced feature attention
-        motion_enhanced = self.motion_attn(pix_feat, pix_feat_short_long)
+        motion_enhanced = self.motion_attn(pix_feat_short_long, pix_feat)
         
         # 3. Multi-scale temporal analysis
         temporal_feats = []
@@ -100,7 +100,7 @@ class AdaptiveTemporalFusion(nn.Module):
         temporal_feat = self.temporal_fusion(temporal_feat)  # Process concatenated features
         
         # 4. Combine and refine all features
-        combined_feat = torch.cat([balanced_feat, motion_enhanced, temporal_feat], dim=1)
+        combined_feat = torch.cat([balanced_feat, motion_enhanced, temporal_feat, pix_feat], dim=1)
         output = self.refinement(combined_feat)
         
         return output
