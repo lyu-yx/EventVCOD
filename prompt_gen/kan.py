@@ -243,6 +243,50 @@ class KANLinear(torch.nn.Module):
             + regularize_entropy * regularization_loss_entropy
         )
 
+class ConvBR(nn.Module):
+    def __init__(self, in_channel, out_channel, kernel_size, stride=1, padding=0, dilation=1):
+        super(ConvBR, self).__init__()
+        self.conv = nn.Conv2d(in_channel, out_channel,
+                              kernel_size=kernel_size, stride=stride,
+                              padding=padding, dilation=dilation, bias=False)
+        self.bn = nn.BatchNorm2d(out_channel)
+        self.relu = nn.ReLU(inplace=True)
+        self.init_weight()
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.bn(x)
+        x = self.relu(x)
+        return x
+
+    def init_weight(self):
+        for ly in self.children():
+            if isinstance(ly, nn.Conv2d):
+                nn.init.kaiming_normal_(ly.weight, a=1)
+                if not ly.bias is None: nn.init.constant_(ly.bias, 0)
+
+class DimensionalReduction(nn.Module):
+    '''
+    Dimensional reduction module
+
+    Args:
+        in_channel (int): Number of input channels
+        out_channel (int): Number of output channels
+    
+    '''
+    
+    
+    
+    def __init__(self, in_channel, out_channel):
+        super(DimensionalReduction, self).__init__()
+        self.reduce = nn.Sequential(
+            ConvBR(in_channel, out_channel, 3, padding=1),
+            ConvBR(out_channel, out_channel, 3, padding=1)
+        )
+
+    def forward(self, x):
+        return self.reduce(x)
+    
 
 class KAN(torch.nn.Module):
     def __init__(

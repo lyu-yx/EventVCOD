@@ -18,7 +18,7 @@ from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_fr
 from sam2.modeling.sam.embedding_generator import initialize_embedding_generator
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
 from prompt_gen.kan_box_predictor import KANBBoxPredictorVisionFeat
-from prompt_gen.kan import KAN, FeatureReducer
+from prompt_gen.kan import KAN, DimensionalReduction
 # from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
 # a large negative value as a placeholder score for missing objects
@@ -265,6 +265,10 @@ class SAM2Base(torch.nn.Module):
             grid_range=[-1, 1],
         )
 
+        self.dimensional_reduction = torch.nn.Sequential(
+            DimensionalReduction(in_channel=256, out_channel=64),
+            DimensionalReduction(in_channel=64, out_channel=1)
+        )
 
         self.sam_prompt_encoder = PromptEncoder(
             embed_dim=self.sam_prompt_embed_dim,
@@ -392,12 +396,13 @@ class SAM2Base(torch.nn.Module):
             # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None
 
+
+        flatten_backbone_features = self.dimensional_reduction(backbone_features).flatten(2)
         # sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features)
-        flatten_backbone_features = backbone_features.flatten(2)
-
         boxes = self.kan_model(flatten_backbone_features)
-
+        
         # can add the box loss for supervising here
+
 
         # no mask and point input
         sam_point_coords = torch.zeros(B, 1, 2, device=device)
