@@ -5,11 +5,6 @@ import math
 from typing import Optional
 
 class PositionEmbeddingSine(nn.Module):
-    """
-    This is a more standard version of the position embedding, very similar to the one
-    used by the Attention Is All You Need paper, generalized to work on images.
-    """
-
     def __init__(
         self,
         num_pos_feats,
@@ -31,7 +26,6 @@ class PositionEmbeddingSine(nn.Module):
         self.cache = {}
 
     def _encode_xy(self, x, y):
-        # The positions are expected to be normalized
         assert len(x) == len(y) and x.ndim == y.ndim == 1
         x_embed = x * self.scale
         y_embed = y * self.scale
@@ -48,23 +42,6 @@ class PositionEmbeddingSine(nn.Module):
             (pos_y[:, 0::2].sin(), pos_y[:, 1::2].cos()), dim=2
         ).flatten(1)
         return pos_x, pos_y
-
-    @torch.no_grad()
-    def encode_boxes(self, x, y, w, h):
-        pos_x, pos_y = self._encode_xy(x, y)
-        pos = torch.cat((pos_y, pos_x, h[:, None], w[:, None]), dim=1)
-        return pos
-
-    encode = encode_boxes  # Backwards compatibility
-
-    @torch.no_grad()
-    def encode_points(self, x, y, labels):
-        (bx, nx), (by, ny), (bl, nl) = x.shape, y.shape, labels.shape
-        assert bx == by and nx == ny and bx == bl and nx == nl
-        pos_x, pos_y = self._encode_xy(x.flatten(), y.flatten())
-        pos_x, pos_y = pos_x.reshape(bx, nx, -1), pos_y.reshape(by, ny, -1)
-        pos = torch.cat((pos_y, pos_x, labels[:, :, None]), dim=2)
-        return pos
 
     @torch.no_grad()
     def forward(self, x: torch.Tensor):
@@ -103,23 +80,49 @@ class PositionEmbeddingSine(nn.Module):
         return pos
 
 class EventFlowEncoder(nn.Module):
-    def __init__(self, in_channels: int = 3, d_model: int = 256, num_heads: int = 4, num_layers: int = 3, num_pos_feats: int = 256):
-        """
-        Lightweight Event Flow Encoder using Transformer
-        Args:
-            in_channels (int): Number of input channels, typically 3 for event flow (x, y differences, and time).
-            d_model (int): Dimension of the model features.
-            num_heads (int): Number of attention heads in the transformer.
-            num_layers (int): Number of transformer encoder layers.
-            num_pos_feats (int): Number of positional features for encoding.
-        """
+    def __init__(self, in_channels: int = 3, d_model: int = 32, num_heads: int = 1, num_layers: int = 1, num_pos_feats: int = 64):
         super(EventFlowEncoder, self).__init__()
         
-        # Initial downsampling to reduce the input size to 256x256
-        self.initial_downsample = nn.Conv2d(in_channels, in_channels, kernel_size=4, stride=4, padding=0)
+        # Apply more aggressive initial downsampling to reduce spatial size early
+        self.initial_downsample = nn.Sequential(
+            nn.Conv2d(in_channels, d_model // 2, kernel_size=7, stride=2, padding=3),
+            nn.ReLU(),
+            nn.Conv2d(d_model // 2, d_model // 2, kernel_size=5, stride=2, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(d_model // 2, d_model, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+        )
         
-        # Linear projection to match the input dimension to the model dimension
-        self.input_proj = nn.Conv2d(in_channels, d_model, kernel_size=1)
+        # Additional pooling to further reduce spatial size
+        self.additional_pool = nn.AvgPool2d(kernel_size=4, stride=4)
+        
+        # Convolutional layers for upsampling
+        self.conv_up_1 = nn.Sequential(
+            nn.ConvTranspose2d(d_model, d_model // 2, kernel_size=2, stride=2, padding=0),  # 2x upsample
+            nn.BatchNorm2d(d_model // 2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(d_model // 2, d_model // 2, kernel_size=3, stride=1, padding=1),  # Intermediate layer
+            nn.BatchNorm2d(d_model // 2),
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(d_model // 2, d_model // 4, kernel_size=2, stride=2, padding=0),  # Another 2x upsample
+            nn.BatchNorm2d(d_model // 4),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(d_model // 4, d_model // 4, kernel_size=3, stride=1, padding=1),  # Another intermediate layer
+            nn.BatchNorm2d(d_model // 4),
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(d_model // 4, d_model, kernel_size=2, stride=2, padding=0)  # Final 2x upsample to reach 8x total
+        )
+
+        # Second upsampling (4x equivalent) with similar structure
+        self.conv_up_2 = nn.Sequential(
+            nn.ConvTranspose2d(d_model, d_model // 2, kernel_size=2, stride=2, padding=0),  # 2x upsample
+            nn.BatchNorm2d(d_model // 2),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(d_model // 2, d_model // 2, kernel_size=3, stride=1, padding=1),  # Intermediate layer
+            nn.BatchNorm2d(d_model // 2),
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(d_model // 2, d_model, kernel_size=2, stride=2, padding=0)  # Final 2x upsample for 4x total
+        )
         
         # Positional encoding
         self.position_encoding = PositionEmbeddingSine(num_pos_feats)
@@ -130,13 +133,13 @@ class EventFlowEncoder(nn.Module):
         
     def forward(self, sample: torch.Tensor):
         # Initial downsampling to reduce spatial size
-        sample = self.initial_downsample(sample)  # [B, in_channels, 256, 256]
+        x = self.initial_downsample(sample)  # [B, d_model, 64, 64]
         
-        # Project input to model dimension
-        x = self.input_proj(sample)  # [B, d_model, 256, 256]
+        # Further downsampling to reduce spatial size to [32, 32]
+        x = self.additional_pool(x)  # [B, d_model, 32, 32]
         
         # Positional encoding
-        pos_enc = self.position_encoding(x)  # [B, d_model, 256, 256]
+        pos_enc = self.position_encoding(x)  # [B, d_model, 32, 32]
         
         # Flatten the spatial dimensions for the transformer input
         B, C, H, W = x.shape
@@ -147,23 +150,23 @@ class EventFlowEncoder(nn.Module):
         x = self.transformer_encoder(x + pos_enc)  # [H*W, B, d_model]
         
         # Reshape back to the original spatial dimensions
-        x = x.permute(1, 2, 0).view(B, C, H, W)  # [B, d_model, 256, 256]
-        pos_enc = pos_enc.permute(1, 2, 0).view(B, C, H, W)  # [B, d_model, 256, 256]
+        x = x.permute(1, 2, 0).view(B, C, H, W)  # [B, d_model, 32, 32]
+        pos_enc = pos_enc.permute(1, 2, 0).view(B, C, H, W)  # [B, d_model, 32, 32]
         
-        # Downsampling for additional feature maps
-        feature_map_1 = x  # [B, d_model, 256, 256]
-        pos_enc_1 = pos_enc  # [B, d_model, 256, 256]
+        # Upsample using convolutional layers
+        feature_map_1 = self.conv_up_1(x)  # [B, d_model, 256, 256]
+        pos_enc_1 = F.interpolate(pos_enc, size=feature_map_1.shape[-2:], mode='bilinear', align_corners=False)
         
-        feature_map_2 = F.avg_pool2d(feature_map_1, kernel_size=2, stride=2)  # [B, d_model, 128, 128]
-        pos_enc_2 = F.avg_pool2d(pos_enc_1, kernel_size=2, stride=2)  # [B, d_model, 128, 128]
+        feature_map_2 = self.conv_up_2(x)  # [B, d_model, 128, 128]
+        pos_enc_2 = F.interpolate(pos_enc, size=feature_map_2.shape[-2:], mode='bilinear', align_corners=False)
         
-        feature_map_3 = F.avg_pool2d(feature_map_2, kernel_size=2, stride=2)  # [B, d_model, 64, 64]
-        pos_enc_3 = F.avg_pool2d(pos_enc_2, kernel_size=2, stride=2)  # [B, d_model, 64, 64]
+        feature_map_3 = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)  # [B, d_model, 64, 64]
+        pos_enc_3 = F.interpolate(pos_enc, size=feature_map_3.shape[-2:], mode='bilinear', align_corners=False)
         
         # Output dictionary to match the original image encoder structure
         output = {
-            "vision_features": feature_map_1,
-            "vision_pos_enc": [pos_enc_1, pos_enc_2, pos_enc_3],  # Positional encoding after downsampling
+            "vision_features": feature_map_3,
+            "vision_pos_enc": [pos_enc_1, pos_enc_2, pos_enc_3],
             "backbone_fpn": [feature_map_1, feature_map_2, feature_map_3],
         }
         return output
