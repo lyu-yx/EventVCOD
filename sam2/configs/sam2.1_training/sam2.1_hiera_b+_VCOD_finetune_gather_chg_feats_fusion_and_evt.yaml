@@ -62,7 +62,7 @@ trainer:
   seed_value: 123
 
   model:
-    _target_: training.model.sam2_vcod_prompt_generator_visionfeat_gather_chg_geats_fusion.SAM2TrainVCODPromptGenerator
+    _target_: training.model.sam2_vcod_prompt_generator_visionfeat_gather_chg_geats_fusion_and_evt.SAM2TrainVCODPromptGenerator
     image_encoder:
       _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
       scalp: 1
@@ -393,7 +393,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather_chg_geats_fusion/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather_chg_geats_fusion_and_evt/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:

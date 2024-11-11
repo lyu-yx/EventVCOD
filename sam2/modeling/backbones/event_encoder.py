@@ -103,7 +103,7 @@ class PositionEmbeddingSine(nn.Module):
         return pos
 
 class EventFlowEncoder(nn.Module):
-    def __init__(self, in_channels: int = 3, d_model: int = 256, num_heads: int = 8, num_layers: int = 6, num_pos_feats: int = 256):
+    def __init__(self, in_channels: int = 3, d_model: int = 128, num_heads: int = 4, num_layers: int = 3, num_pos_feats: int = 128):
         """
         Lightweight Event Flow Encoder using Transformer
         Args:
@@ -115,6 +115,9 @@ class EventFlowEncoder(nn.Module):
         """
         super(EventFlowEncoder, self).__init__()
         
+        # Initial downsampling to reduce the input size to 256x256
+        self.initial_downsample = nn.Conv2d(in_channels, in_channels, kernel_size=4, stride=4, padding=0)
+        
         # Linear projection to match the input dimension to the model dimension
         self.input_proj = nn.Conv2d(in_channels, d_model, kernel_size=1)
         
@@ -122,18 +125,21 @@ class EventFlowEncoder(nn.Module):
         self.position_encoding = PositionEmbeddingSine(num_pos_feats)
         
         # Transformer encoder
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=num_heads, dim_feedforward=d_model * 4, dropout=0.1, activation="relu")
+        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=num_heads, dim_feedforward=d_model * 2, dropout=0.1, activation="relu")
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         
         # Final projection to reduce the spatial dimensions to 64x64
-        self.downsample = nn.Conv2d(d_model, d_model, kernel_size=4, stride=4, padding=0)
+        self.final_downsample = nn.Conv2d(d_model, d_model, kernel_size=4, stride=4, padding=0)
         
     def forward(self, sample: torch.Tensor):
+        # Initial downsampling to reduce spatial size
+        sample = self.initial_downsample(sample)  # [B, in_channels, 256, 256]
+        
         # Project input to model dimension
-        x = self.input_proj(sample)  # [B, d_model, H, W]
+        x = self.input_proj(sample)  # [B, d_model, 256, 256]
         
         # Positional encoding
-        pos_enc = self.position_encoding(x)  # [B, d_model, H, W]
+        pos_enc = self.position_encoding(x)  # [B, d_model, 256, 256]
         
         # Flatten the spatial dimensions for the transformer input
         B, C, H, W = x.shape
@@ -144,16 +150,16 @@ class EventFlowEncoder(nn.Module):
         x = self.transformer_encoder(x + pos_enc)  # [H*W, B, d_model]
         
         # Reshape back to the original spatial dimensions
-        x = x.permute(1, 2, 0).view(B, C, H, W)  # [B, d_model, H, W]
+        x = x.permute(1, 2, 0).view(B, C, H, W)  # [B, d_model, 256, 256]
         
-        # Downsample to 64x64 spatial dimensions
-        x = self.downsample(x)  # [B, d_model, 64, 64]
-        pos_enc = self.downsample(pos_enc.permute(1, 2, 0).view(B, C, H, W))  # [B, d_model, 64, 64]
+        # Final downsampling to 64x64 spatial dimensions
+        x = self.final_downsample(x)  # [B, d_model, 64, 64]
+        pos_enc = self.final_downsample(pos_enc.permute(1, 2, 0).view(B, C, H, W))  # [B, d_model, 64, 64]
         
         # Output dictionary to match the original image encoder structure
         output = {
             "vision_features": x,
-            "vision_pos_enc": pos_enc,  # Positional encoding after downsampling
+            "vision_pos_enc": None,  # Positional encoding after downsampling
             "backbone_fpn": [x],
         }
         return output

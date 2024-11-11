@@ -9,7 +9,7 @@ import logging
 import numpy as np
 import torch
 import torch.distributed
-from sam2.modeling.sam2_base_prompt_generator_visionfeat_gather_chg_feats_fusion import SAM2Base
+from sam2.modeling.sam2_base_prompt_generator_visionfeat_gather_chg_feats_fusion_and_evt import SAM2Base
 from sam2.modeling.sam2_utils import (
     get_1d_sine_pe,
     get_next_point,
@@ -121,7 +121,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         if self.training or not self.forward_backbone_per_frame_for_eval:
             # precompute image features on all frames before tracking
             backbone_out_img = self.forward_image(input.flat_img_batch)
-            backbone_out_event = self.forward_image(input.flat_event_batch)
+            backbone_out_event = self.forward_event(input.flat_event_batch)
         else:
             # defer image feature computation on a frame until it's being tracked
             backbone_out_img = {"backbone_fpn": None, "vision_pos_enc": None}
@@ -155,7 +155,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             feat_sizes,
         ) = self._prepare_backbone_features(backbone_out_img)
 
-        backbone_out_event = self.forward_image(event)
+        backbone_out_event = self.forward_event(event)
         (
             _,
             vision_feats_event,
