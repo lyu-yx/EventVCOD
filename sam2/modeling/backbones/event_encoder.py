@@ -103,7 +103,7 @@ class PositionEmbeddingSine(nn.Module):
         return pos
 
 class EventFlowEncoder(nn.Module):
-    def __init__(self, in_channels: int = 3, d_model: int = 128, num_heads: int = 4, num_layers: int = 3, num_pos_feats: int = 128):
+    def __init__(self, in_channels: int = 3, d_model: int = 256, num_heads: int = 4, num_layers: int = 3, num_pos_feats: int = 256):
         """
         Lightweight Event Flow Encoder using Transformer
         Args:
@@ -128,9 +128,6 @@ class EventFlowEncoder(nn.Module):
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=num_heads, dim_feedforward=d_model * 2, dropout=0.1, activation="relu")
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         
-        # Final projection to reduce the spatial dimensions to 64x64
-        self.final_downsample = nn.Conv2d(d_model, d_model, kernel_size=4, stride=4, padding=0)
-        
     def forward(self, sample: torch.Tensor):
         # Initial downsampling to reduce spatial size
         sample = self.initial_downsample(sample)  # [B, in_channels, 256, 256]
@@ -151,16 +148,23 @@ class EventFlowEncoder(nn.Module):
         
         # Reshape back to the original spatial dimensions
         x = x.permute(1, 2, 0).view(B, C, H, W)  # [B, d_model, 256, 256]
+        pos_enc = pos_enc.permute(1, 2, 0).view(B, C, H, W)  # [B, d_model, 256, 256]
         
-        # Final downsampling to 64x64 spatial dimensions
-        x = self.final_downsample(x)  # [B, d_model, 64, 64]
-        pos_enc = self.final_downsample(pos_enc.permute(1, 2, 0).view(B, C, H, W))  # [B, d_model, 64, 64]
+        # Downsampling for additional feature maps
+        feature_map_1 = x  # [B, d_model, 256, 256]
+        pos_enc_1 = pos_enc  # [B, d_model, 256, 256]
+        
+        feature_map_2 = F.avg_pool2d(feature_map_1, kernel_size=2, stride=2)  # [B, d_model, 128, 128]
+        pos_enc_2 = F.avg_pool2d(pos_enc_1, kernel_size=2, stride=2)  # [B, d_model, 128, 128]
+        
+        feature_map_3 = F.avg_pool2d(feature_map_2, kernel_size=2, stride=2)  # [B, d_model, 64, 64]
+        pos_enc_3 = F.avg_pool2d(pos_enc_2, kernel_size=2, stride=2)  # [B, d_model, 64, 64]
         
         # Output dictionary to match the original image encoder structure
         output = {
-            "vision_features": x,
-            "vision_pos_enc": None,  # Positional encoding after downsampling
-            "backbone_fpn": [x],
+            "vision_features": feature_map_1,
+            "vision_pos_enc": [pos_enc_1, pos_enc_2, pos_enc_3],  # Positional encoding after downsampling
+            "backbone_fpn": [feature_map_1, feature_map_2, feature_map_3],
         }
         return output
 
