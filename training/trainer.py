@@ -420,29 +420,77 @@ class Trainer:
             )
             self.model = model_weight_initializer(model=self.model)
 
+    # def _load_resuming_checkpoint(self, ckpt_path: str):
+    #     logging.info(f"Resuming training from {ckpt_path}")
+
+    #     with g_pathmgr.open(ckpt_path, "rb") as f:
+    #         checkpoint = torch.load(f, map_location="cpu")
+    #     load_state_dict_into_model(
+    #         model=self.model,
+    #         strict=False,
+    #         state_dict=checkpoint["model"],
+    #         ignore_missing_keys=self.checkpoint_conf.skip_saving_parameters,
+    #     )
+
+    #     self.optim.optimizer.load_state_dict(checkpoint["optimizer"])
+    #     self.loss.load_state_dict(checkpoint["loss"], strict=True)
+    #     self.epoch = checkpoint["epoch"]
+    #     self.steps = checkpoint["steps"]
+    #     self.ckpt_time_elapsed = checkpoint.get("time_elapsed")
+
+    #     if self.optim_conf.amp.enabled and "scaler" in checkpoint:
+    #         self.scaler.load_state_dict(checkpoint["scaler"])
+
+    #     self.best_meter_values = checkpoint.get("best_meter_values", {})
+
+    #     if "train_dataset" in checkpoint and self.train_dataset is not None:
+    #         self.train_dataset.load_checkpoint_state(checkpoint["train_dataset"])
+    
     def _load_resuming_checkpoint(self, ckpt_path: str):
         logging.info(f"Resuming training from {ckpt_path}")
 
         with g_pathmgr.open(ckpt_path, "rb") as f:
             checkpoint = torch.load(f, map_location="cpu")
+
+        # Extract image_encoder weights from the checkpoint
+        image_encoder_state_dict = checkpoint["model"].get("image_encoder", {})
+
+        # Initialize combined state dict with the base model's state dict
+        combined_state_dict = checkpoint["model"].copy()
+
+        # Check if event_encoder exists in the model
+        if hasattr(self.model, 'event_encoder'):
+            # Duplicate weights for event_encoder by renaming keys if necessary
+            event_encoder_state_dict = {}
+            for key, value in image_encoder_state_dict.items():
+                event_key = key.replace("image_encoder", "event_encoder")
+                event_encoder_state_dict[event_key] = value
+            
+            # Add event_encoder weights to combined state dict
+            combined_state_dict.update(event_encoder_state_dict)
+            logging.info("Event encoder weights initialized from image encoder.")
+
+        # Load the combined state dict into the model
         load_state_dict_into_model(
             model=self.model,
             strict=False,
-            state_dict=checkpoint["model"],
+            state_dict=combined_state_dict,
             ignore_missing_keys=self.checkpoint_conf.skip_saving_parameters,
         )
 
+        # Load optimizer, loss, epoch, steps, etc., as before
         self.optim.optimizer.load_state_dict(checkpoint["optimizer"])
         self.loss.load_state_dict(checkpoint["loss"], strict=True)
         self.epoch = checkpoint["epoch"]
         self.steps = checkpoint["steps"]
         self.ckpt_time_elapsed = checkpoint.get("time_elapsed")
 
+        # Load scaler if using AMP and it's present in the checkpoint
         if self.optim_conf.amp.enabled and "scaler" in checkpoint:
             self.scaler.load_state_dict(checkpoint["scaler"])
 
+        # Load best meter values and dataset state if available
         self.best_meter_values = checkpoint.get("best_meter_values", {})
-
         if "train_dataset" in checkpoint and self.train_dataset is not None:
             self.train_dataset.load_checkpoint_state(checkpoint["train_dataset"])
 
