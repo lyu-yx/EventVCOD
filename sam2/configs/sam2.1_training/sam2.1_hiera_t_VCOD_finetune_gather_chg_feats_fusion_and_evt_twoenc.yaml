@@ -6,7 +6,8 @@ scratch:
   num_train_workers: 8
   num_frames: 8
   max_num_objects: 1
-  base_lr: 5.0e-6
+  large_lr: 1.0e-4
+  base_lr: 5.0e-5
   vision_lr: 3.0e-06
   phases_per_epoch: 1
   num_epochs: 300
@@ -356,6 +357,12 @@ trainer:
           param_names:
             - 'image_encoder.*'
             - 'memory_attention.*'
+        - scheduler:
+            _target_: fvcore.common.param_scheduler.CosineParamScheduler
+            start_value: ${scratch.large_lr}
+            end_value: ${divide:${scratch.large_lr},10}
+          param_names:
+            - 'event_encoder.*'
       weight_decay:
         - scheduler:
             _target_: fvcore.common.param_scheduler.ConstantParamScheduler
