@@ -174,7 +174,7 @@ trainer:
           downsample_rate: 1
           dropout: 0.1
           kv_in_dim: 64
-      num_layers: 2
+      num_layers: 1
 
     memory_encoder:
       _target_: sam2.modeling.memory_encoder.MemoryEncoder
@@ -259,7 +259,7 @@ trainer:
     use_act_ckpt_iterative_pt_sampling: false
     
 
-    freeze_image_encoder: False
+    freeze_image_encoder: True
     freeze_mask_decoder: False
     freeze_embedding_generator: False
 
@@ -355,6 +355,7 @@ trainer:
             end_value: ${divide:${scratch.vision_lr},10}
           param_names:
             - 'image_encoder.*'
+            - 'memory_attention.*'
       weight_decay:
         - scheduler:
             _target_: fvcore.common.param_scheduler.ConstantParamScheduler
@@ -413,7 +414,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_s_visionfeat_gather_chg_geats_fusion_and_evt_twoenc/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_t_visionfeat_gather_chg_geats_fusion_and_evt_twoenc/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
