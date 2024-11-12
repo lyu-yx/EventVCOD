@@ -92,11 +92,11 @@ class AdaptiveTemporalFusion(nn.Module):
         
         # Feature refinement
         self.refinement = nn.Sequential(
-            nn.Conv2d(in_channels*4, in_channels, 1),
-            nn.BatchNorm2d(in_channels),
+            nn.Conv2d(in_channels*4, in_channels*2, 1),
+            nn.BatchNorm2d(in_channels*2),
             nn.ReLU(inplace=True),
             nn.Conv2d(in_channels*2, in_channels*2, 3, padding=1),
-            nn.BatchNorm2d(in_channels),
+            nn.BatchNorm2d(in_channels*2),
             nn.ReLU(inplace=True),
             nn.Conv2d(in_channels*2, in_channels, 3, padding=1),
             nn.BatchNorm2d(in_channels),
