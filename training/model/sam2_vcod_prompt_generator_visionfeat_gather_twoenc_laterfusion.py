@@ -417,7 +417,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
     ):
         if frames_to_add_correction_pt is None:
             frames_to_add_correction_pt = []
-        current_out, sam_outputs, high_res_features, pix_feat = self._track_step(
+        current_out, sam_outputs, high_res_features, pix_feat, event_feat = self._track_step(
             frame_idx,
             is_init_cond_frame,
             current_vision_feats,
@@ -459,6 +459,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 gt_masks,
                 high_res_features,
                 pix_feat,
+                event_feat,
                 low_res_multimasks,
                 high_res_multimasks,
                 ious,
@@ -502,6 +503,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         gt_masks,
         high_res_features,
         pix_feat_with_mem,
+        event_feat_with_mem,
         low_res_multimasks,
         high_res_multimasks,
         ious,
@@ -545,6 +547,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 sam_outputs = torch.utils.checkpoint.checkpoint(
                     self._forward_sam_heads,
                     backbone_features=pix_feat_with_mem,
+                    event_features=event_feat_with_mem,
                     point_inputs=point_inputs,
                     mask_inputs=mask_inputs,
                     high_res_features=high_res_features,
@@ -554,6 +557,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             else:
                 sam_outputs = self._forward_sam_heads(
                     backbone_features=pix_feat_with_mem,
+                    event_features=event_feat_with_mem,
                     point_inputs=point_inputs,
                     mask_inputs=mask_inputs,
                     high_res_features=high_res_features,

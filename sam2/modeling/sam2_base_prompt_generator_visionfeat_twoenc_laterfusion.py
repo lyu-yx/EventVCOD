@@ -838,7 +838,7 @@ class SAM2Base(torch.nn.Module):
                 multimask_output=multimask_output,
             )
 
-        return current_out, sam_outputs, high_res_features, pix_feat
+        return current_out, sam_outputs, high_res_features, pix_feat, pix_feat_short_long
 
     def _encode_memory_in_output(
         self,
@@ -888,7 +888,7 @@ class SAM2Base(torch.nn.Module):
         # The previously predicted SAM mask logits (which can be fed together with new clicks in demo).
         prev_sam_mask_logits=None,
     ):
-        current_out, sam_outputs, _, _ = self._track_step(
+        current_out, sam_outputs, _, _, _ = self._track_step(
             frame_idx,
             is_init_cond_frame,
             current_vision_feats,
