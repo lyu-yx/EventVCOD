@@ -9,7 +9,7 @@ import torch.distributed
 import torch.nn.functional as F
 
 from torch.nn.init import trunc_normal_
-
+import torch.nn as nn
 
 from sam2.modeling.sam.mask_decoder import MaskDecoder
 from sam2.modeling.sam.embedding_generator import EmbeddingGenerator
@@ -29,7 +29,6 @@ class SAM2Base(torch.nn.Module):
         image_encoder,
         event_encoder,
         memory_attention,
-        short_long_relation_attention,
         feature_fusion,
         memory_encoder,
         num_maskmem=7,  # default 1 input frame + 6 previous frames
@@ -132,7 +131,6 @@ class SAM2Base(torch.nn.Module):
         # Part 2: memory attention to condition current frame's visual features
         # with memories (and obj ptrs) from past frames
         self.memory_attention = memory_attention
-        self.short_long_relation_attention = short_long_relation_attention
 
 
         self.hidden_dim = image_encoder.neck.d_model
@@ -177,6 +175,29 @@ class SAM2Base(torch.nn.Module):
         self.use_multimask_token_for_obj_ptr = use_multimask_token_for_obj_ptr
         self.iou_prediction_use_sigmoid = iou_prediction_use_sigmoid
 
+
+        self.refine = nn.Sequential(
+            nn.Conv2d(256, 128, kernel_size=1, stride=1, padding=0),  # 1x1 Conv
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),  # 3x3 Conv
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=2, dilation=2),  # Dilated Conv
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            
+            # Optional residual block
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            
+            nn.Conv2d(128, 256, kernel_size=1, stride=1, padding=0)  # Final 1x1 Conv
+        )
         # Part 3.1: Prompt Generator (bbox)
         # self.box_predictor = PromptGenerator()
 
@@ -690,16 +711,19 @@ class SAM2Base(torch.nn.Module):
             num_obj_ptr_tokens=num_obj_ptr_tokens,
         )
 
-        pix_feat_with_mem_event = self.short_long_relation_attention(
-            curr=current_vision_feats_event,
-            curr_pos=current_vision_pos_embeds_event,
-            memory=memory,
-            memory_pos=memory_pos_embed,
-            num_obj_ptr_tokens=num_obj_ptr_tokens,
-        )
+        # pix_feat_with_mem_event = self.short_long_relation_attention(
+        #     curr=current_vision_feats_event,
+        #     curr_pos=current_vision_pos_embeds_event,
+        #     memory=current_vision_feats[0],
+        #     memory_pos=current_vision_pos_embeds[0],
+        #     num_obj_ptr_tokens=num_obj_ptr_tokens,
+        # )
         # reshape the output (HW)BC => BCHW
+        pix_feat_with_mem_event = current_vision_feats_event[0].permute(1, 2, 0).view(B, C, H, W)
+        pix_feat_with_mem_event = self.refine(pix_feat_with_mem_event)
+
         pix_feat_with_mem = pix_feat_with_mem.permute(1, 2, 0).view(B, C, H, W)
-        pix_feat_with_mem_event = pix_feat_with_mem_event.permute(1, 2, 0).view(B, C, H, W)
+        
 
         return pix_feat_with_mem, pix_feat_with_mem_event
     
