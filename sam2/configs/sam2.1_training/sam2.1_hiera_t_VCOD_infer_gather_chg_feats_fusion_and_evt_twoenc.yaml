@@ -20,7 +20,7 @@ dataset:
 
 
 model:
-_target_: sam2.modeling.sam2_base_prompt_generator_visionfeat_gather_chg_feats_fusion_and_evt_twoenc.SAM2Base
+_target_: training.model.sam2_video_predictor_gather_chg_feats_fusion_and_evt_twoenc.SAM2VideoPredictor
   image_encoder:
     _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
     scalp: 1
