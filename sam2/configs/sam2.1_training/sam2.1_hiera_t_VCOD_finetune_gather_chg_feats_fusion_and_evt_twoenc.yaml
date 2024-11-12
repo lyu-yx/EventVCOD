@@ -143,31 +143,6 @@ trainer:
           kv_in_dim: 64
       num_layers: 4
 
-    memory_encoder:
-      _target_: sam2.modeling.memory_encoder.MemoryEncoder
-      out_dim: 64
-      position_encoding:
-        _target_: sam2.modeling.position_encoding.PositionEmbeddingSine
-        num_pos_feats: 64
-        normalize: true
-        scale: null
-        temperature: 10000
-      mask_downsampler:
-        _target_: sam2.modeling.memory_encoder.MaskDownSampler
-        kernel_size: 3
-        stride: 2
-        padding: 1
-      fuser:
-        _target_: sam2.modeling.memory_encoder.Fuser
-        layer:
-          _target_: sam2.modeling.memory_encoder.CXBlock
-          dim: 256
-          kernel_size: 7
-          padding: 3
-          layer_scale_init_value: 1e-6
-          use_dwconv: True  # depth-wise convs
-        num_layers: 2
-
     short_long_relation_attention:
       _target_: sam2.modeling.memory_attention.MemoryAttention
       d_model: 256
@@ -200,6 +175,33 @@ trainer:
           dropout: 0.1
           kv_in_dim: 64
       num_layers: 2
+
+    memory_encoder:
+      _target_: sam2.modeling.memory_encoder.MemoryEncoder
+      out_dim: 64
+      position_encoding:
+        _target_: sam2.modeling.position_encoding.PositionEmbeddingSine
+        num_pos_feats: 64
+        normalize: true
+        scale: null
+        temperature: 10000
+      mask_downsampler:
+        _target_: sam2.modeling.memory_encoder.MaskDownSampler
+        kernel_size: 3
+        stride: 2
+        padding: 1
+      fuser:
+        _target_: sam2.modeling.memory_encoder.Fuser
+        layer:
+          _target_: sam2.modeling.memory_encoder.CXBlock
+          dim: 256
+          kernel_size: 7
+          padding: 3
+          layer_scale_init_value: 1e-6
+          use_dwconv: True  # depth-wise convs
+        num_layers: 2
+
+    
 
     feature_fusion:
       _target_: sam2.modeling.feature_fusion_4_feats.AdaptiveTemporalFusion
@@ -405,7 +407,7 @@ trainer:
 
       state_dict:
         _target_: training.utils.checkpoint_utils.load_checkpoint_and_apply_kernels
-        checkpoint_path: ./checkpoints/sam2.1_hiera_small.pt # PATH to SAM 2.1 checkpoint
+        checkpoint_path: ./checkpoints/sam2.1_hiera_tiny.pt # PATH to SAM 2.1 checkpoint
         ckpt_state_dict_keys: ['model']
 
 launcher:
