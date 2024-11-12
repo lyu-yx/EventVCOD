@@ -1,26 +1,7 @@
 # @package _global_
 
-scratch:
-  resolution: 1024
-  train_batch_size: 1
-  num_train_workers: 8
-  num_frames: 8
-  max_num_objects: 1
-  base_lr: 5.0e-6
-  vision_lr: 3.0e-06
-  phases_per_epoch: 1
-  num_epochs: 300
-
-dataset:
-  # PATHS to Dataset
-  # img_folder: /fsx-onevision/shared/data/academic_vos_data/MOSE/train/JPEGImages # PATH to MOSE JPEGImages folder
-  # gt_folder: /fsx-onevision/shared/data/academic_vos_data/MOSE/train/Annotations/  # PATH to MOSE Annotations folder
-  # file_list_txt: training/assets/MOSE_sample_train_list.txt # Optional PATH to filelist containing a subset of videos to be used for training
-  multiplier: 1
-
-
 model:
-_target_: training.model.sam2_video_predictor_gather_chg_feats_fusion_and_evt_twoenc.SAM2VideoPredictor
+  _target_: sam2.modeling.sam2_base_prompt_generator_visionfeat_gather_chg_feats_fusion_and_evt_twoenc.SAM2Base
   image_encoder:
     _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
     scalp: 1
@@ -159,14 +140,12 @@ _target_: training.model.sam2_video_predictor_gather_chg_feats_fusion_and_evt_tw
         use_dwconv: True  # depth-wise convs
       num_layers: 2
 
-  
-
   feature_fusion:
     _target_: sam2.modeling.feature_fusion_4_feats.AdaptiveTemporalFusion
     in_channels: 256
 
   num_maskmem: 7
-  image_size: ${scratch.resolution}
+  image_size: 1024
   # apply scaled sigmoid on mask logits for memory encoder, and directly feed input mask as output mask
   sigmoid_scale_for_mem_enc: 20.0
   sigmoid_bias_for_mem_enc: -10.0
@@ -199,29 +178,4 @@ _target_: training.model.sam2_video_predictor_gather_chg_feats_fusion_and_evt_tw
   # Compilation flag
   # compile_image_encoder: False
 
-  ####### Training specific params #######
-  # box/point input and corrections
-  prob_to_use_pt_input_for_train: 1
-  prob_to_use_pt_input_for_eval: 0.0
-  prob_to_use_box_input_for_train: 1  # 0.5*0.5 = 0.25 prob to use box instead of points
-  prob_to_use_box_input_for_eval: 0.0
-  prob_to_sample_from_gt_for_train: 0  # with a small prob, sampling correction points from GT mask instead of prediction errors
-  num_frames_to_correct_for_train: 2  # iteratively sample on random 1~2 frames (always include the first frame)
-  num_frames_to_correct_for_eval: 1  # only iteratively sample on first frame
-  rand_frames_to_correct_for_train: True  # random #init-cond-frame ~ 2
-  add_all_frames_to_correct_as_cond: True  # when a frame receives a correction click, it becomes a conditioning frame (even if it's not initially a conditioning frame)
-  # maximum 2 initial conditioning frames
-  num_init_cond_frames_for_train: 2
-  rand_init_cond_frames_for_train: True  # random 1~2
-  num_correction_pt_per_frame: 7
-  use_act_ckpt_iterative_pt_sampling: false
-  
 
-  freeze_image_encoder: False
-  freeze_mask_decoder: False
-  freeze_embedding_generator: False
-
-  
-  num_init_cond_frames_for_eval: 1  # only mask on the first frame
-  forward_backbone_per_frame_for_eval: True
-  
