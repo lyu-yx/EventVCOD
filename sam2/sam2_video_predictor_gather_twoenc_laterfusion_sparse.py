@@ -989,7 +989,7 @@ class SAM2VideoPredictor(SAM2Base):
 
         # point and mask should not appear as input simultaneously on the same frame
         assert point_inputs is None or mask_inputs is None
-        current_out, _ = self.track_step(
+        current_out = self.track_step(
             frame_idx=frame_idx,
             is_init_cond_frame=is_init_cond_frame,
             current_vision_feats=current_vision_feats,

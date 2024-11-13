@@ -1,5 +1,9 @@
+# @package _global_
+
+# Model
 model:
   _target_: sam2.modeling.sam2_base_prompt_generator_visionfeat_twoenc_laterfusion_supervision_sparse.SAM2Base
+  
   image_encoder:
     _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
     scalp: 1
