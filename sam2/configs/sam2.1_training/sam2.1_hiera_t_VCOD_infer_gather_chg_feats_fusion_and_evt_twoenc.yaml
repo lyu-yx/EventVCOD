@@ -1,5 +1,3 @@
-# @package _global_
-
 model:
   _target_: sam2.modeling.sam2_base_prompt_generator_visionfeat_gather_chg_feats_fusion_and_evt_twoenc.SAM2Base
   image_encoder:
