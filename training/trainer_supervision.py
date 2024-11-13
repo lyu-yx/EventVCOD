@@ -934,8 +934,8 @@ class Trainer:
                 raise FloatingPointError(error_msg)
             else:
                 return
-        print('loss before bckpp', loss)
-        loss = embedding_loss + loss
+
+        loss = embedding_loss * 10 + loss
 
         self.scaler.scale(loss).backward()
         loss_mts[loss_key].update(loss.item(), batch_size)
