@@ -6,10 +6,10 @@ scratch:
   num_train_workers: 8
   num_frames: 8
   max_num_objects: 1
-  base_lr: 5.0e-5
+  base_lr: 1.0e-5
   vision_lr: 3.0e-06
   phases_per_epoch: 1
-  num_epochs: 300
+  num_epochs: 100
 
 dataset:
   # PATHS to Dataset
@@ -208,7 +208,7 @@ trainer:
     # apply scaled sigmoid on mask logits for memory encoder, and directly feed input mask as output mask
     sigmoid_scale_for_mem_enc: 20.0
     sigmoid_bias_for_mem_enc: -10.0
-    use_mask_input_as_output_without_sam: true
+    use_mask_input_as_output_without_sam: false
     # Memory
     directly_add_no_mem_embed: true
     no_obj_embed_spatial: true
@@ -225,7 +225,7 @@ trainer:
     use_signed_tpos_enc_to_obj_ptrs: true
     only_obj_ptrs_in_the_past_for_eval: true
     # object occlusion prediction
-    pred_obj_scores: true
+    pred_obj_scores: false
     pred_obj_scores_mlp: true
     fixed_no_obj_ptr: true
     # multimask tracking settings
@@ -239,9 +239,9 @@ trainer:
 
     ####### Training specific params #######
     # box/point input and corrections
-    prob_to_use_pt_input_for_train: 1
+    prob_to_use_pt_input_for_train: 0.0
     prob_to_use_pt_input_for_eval: 0.0
-    prob_to_use_box_input_for_train: 1  # 0.5*0.5 = 0.25 prob to use box instead of points
+    prob_to_use_box_input_for_train: 0.0  # 0.5*0.5 = 0.25 prob to use box instead of points
     prob_to_use_box_input_for_eval: 0.0
     prob_to_sample_from_gt_for_train: 0  # with a small prob, sampling correction points from GT mask instead of prediction errors
     num_frames_to_correct_for_train: 2  # iteratively sample on random 1~2 frames (always include the first frame)
@@ -374,10 +374,10 @@ trainer:
         loss_struc: 1
         loss_dice: 1
         loss_iou: 1
-        loss_class: 1
+        loss_class: 3
       supervise_all_iou: true
       iou_use_l1_loss: true
-      pred_obj_scores: true
+      pred_obj_scores: false
       focal_gamma_obj_score: 0.0
       focal_alpha_obj_score: -1.0
 
@@ -413,7 +413,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_t_visionfeat_gather_twoenc_laterfusion_supervision_dense/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_t_visionfeat_gather_twoenc_laterfusion_supervision_dense_noobj/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:

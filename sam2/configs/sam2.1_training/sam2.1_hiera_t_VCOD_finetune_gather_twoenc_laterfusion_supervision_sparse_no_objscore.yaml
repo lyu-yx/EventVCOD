@@ -225,7 +225,7 @@ trainer:
     use_signed_tpos_enc_to_obj_ptrs: true
     only_obj_ptrs_in_the_past_for_eval: true
     # object occlusion prediction
-    pred_obj_scores: true
+    pred_obj_scores: false
     pred_obj_scores_mlp: true
     fixed_no_obj_ptr: true
     # multimask tracking settings
@@ -377,7 +377,7 @@ trainer:
         loss_class: 1
       supervise_all_iou: true
       iou_use_l1_loss: true
-      pred_obj_scores: true
+      pred_obj_scores: false
       focal_gamma_obj_score: 0.0
       focal_alpha_obj_score: -1.0
 
@@ -413,7 +413,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_t_visionfeat_gather_twoenc_laterfusion_supervision_sparse/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_t_visionfeat_gather_twoenc_laterfusion_supervision_sparse_noobj/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
