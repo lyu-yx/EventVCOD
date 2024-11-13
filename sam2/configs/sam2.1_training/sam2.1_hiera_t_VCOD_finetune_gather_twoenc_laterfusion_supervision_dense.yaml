@@ -141,7 +141,7 @@ trainer:
           downsample_rate: 1
           dropout: 0.1
           kv_in_dim: 64
-      num_layers: 4
+      num_layers: 2
 
     short_long_relation_attention:
       _target_: sam2.modeling.memory_attention.MemoryAttention
