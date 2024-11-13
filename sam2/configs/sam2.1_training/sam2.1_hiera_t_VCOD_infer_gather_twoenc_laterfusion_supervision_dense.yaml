@@ -1,7 +1,7 @@
 
 
 model:
-  _target_: training.model.sam2_vcod_prompt_generator_visionfeat_gather_twoenc_laterfusion_supervision_dense.SAM2TrainVCODPromptGenerator
+  _target_: sam2.modeling.sam2_base_prompt_generator_visionfeat_twoenc_laterfusion_supervision_dense.SAM2Base
   image_encoder:
     _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
     scalp: 1
