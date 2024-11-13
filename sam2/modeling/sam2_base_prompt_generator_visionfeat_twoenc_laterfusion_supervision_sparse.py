@@ -16,7 +16,7 @@ from sam2.modeling.sam.embedding_generator_fusion import EmbeddingGenerator
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 from sam2.modeling.sam.embedding_generator import initialize_embedding_generator
-from sam2.modeling.sam.prompt_encoder_for_supervision import PromptEncoder
+from sam2.modeling.sam.prompt_encoder import PromptEncoder
 # from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
 # a large negative value as a placeholder score for missing objects
