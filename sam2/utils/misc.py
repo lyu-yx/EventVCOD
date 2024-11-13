@@ -270,7 +270,7 @@ def load_video_frames_and_events_from_jpg_images(
     if isinstance(video_path, str) and os.path.isdir(video_path):
         jpg_folder = video_path
         frame_folder = os.path.join(jpg_folder, 'Frame')
-        event_folder = os.path.join(jpg_folder, 'Eventflow', 'red_blue_visualization')
+        event_folder = os.path.join(jpg_folder, 'Eventflow', 'red_blue_visualization_new')
     else:
         raise NotImplementedError(
             "Only JPEG frames are supported at this moment. For video files, you may use "
