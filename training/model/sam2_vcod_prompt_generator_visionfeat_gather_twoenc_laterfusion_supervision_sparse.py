@@ -117,7 +117,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         if freeze_mask_decoder:
             for p in self.sam_mask_decoder.parameters():
                 p.requires_grad = False
-                
+
         if freeze_memory_attention:
             for p in self.memory_attention.parameters():
                 p.requires_grad = False
@@ -554,7 +554,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             mask_inputs = low_res_masks
             multimask_output = self._use_multimask(is_init_cond_frame, point_inputs)
             if self.use_act_ckpt_iterative_pt_sampling and not multimask_output:
-                sam_outputs = torch.utils.checkpoint.checkpoint(
+                sam_outputs, _ = torch.utils.checkpoint.checkpoint(
                     self._forward_sam_heads,
                     backbone_features=pix_feat_with_mem,
                     event_features=event_feat_with_mem,
@@ -565,7 +565,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                     use_reentrant=False,
                 )
             else:
-                sam_outputs = self._forward_sam_heads(
+                sam_outputs, _ = self._forward_sam_heads(
                     backbone_features=pix_feat_with_mem,
                     event_features=event_feat_with_mem,
                     point_inputs=point_inputs,
