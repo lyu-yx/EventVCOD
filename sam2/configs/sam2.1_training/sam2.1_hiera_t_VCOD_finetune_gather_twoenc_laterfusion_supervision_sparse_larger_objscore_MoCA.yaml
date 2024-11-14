@@ -291,7 +291,7 @@ trainer:
 
       # SA-V as an example of a video dataset
       datasets:
-        - _target_: training.dataset.vos_dataset.VOSDatasetMoCA
+        - _target_: training.dataset.vos_raw_dataset.VOSDatasetMoCA
           transforms: ${vos.train_transforms}
           training: true
           video_dataset:
