@@ -167,7 +167,7 @@ model:
   # object occlusion prediction
   pred_obj_scores: false
   pred_obj_scores_mlp: true
-  fixed_no_obj_ptr: true
+  fixed_no_obj_ptr: false
   # multimask tracking settings
   multimask_output_for_tracking: true
   use_multimask_token_for_obj_ptr: true
