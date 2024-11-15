@@ -13,4 +13,5 @@ figs/*
 demo/*
 notebooks/*
 results/*
+datasets/*
 eval/*
