@@ -16,9 +16,84 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# def detect_and_compensate_camera_motion(prev_frame, curr_frame, max_features=1000):
+#     """
+#     Detect and compensate for camera motion using feature matching.
+    
+#     Args:
+#         prev_frame: Previous frame
+#         curr_frame: Current frame
+#         max_features: Maximum number of features to detect
+    
+#     Returns:
+#         compensated_frame: Motion-compensated current frame
+#         mask: Valid regions after compensation
+#         is_moving: Boolean indicating if significant camera motion was detected
+#     """
+#     # Convert frames to grayscale
+#     prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
+#     curr_gray = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2GRAY)
+    
+#     # Detect features
+#     orb = cv2.ORB_create(max_features)
+#     kp1, des1 = orb.detectAndCompute(prev_gray, None)
+#     kp2, des2 = orb.detectAndCompute(curr_gray, None)
+    
+#     if des1 is None or des2 is None or len(kp1) < 10 or len(kp2) < 10:
+#         return curr_frame, np.ones_like(curr_frame), False
+    
+#     # Match features
+#     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+#     matches = bf.match(des1, des2)
+    
+#     # Sort matches by distance
+#     matches = sorted(matches, key=lambda x: x.distance)
+    
+#     # Take only good matches
+#     good_matches = matches[:min(50, len(matches))]
+    
+#     # Extract matched keypoints
+#     src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+#     dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+    
+#     # Estimate rigid transformation (translation + rotation)
+#     transform_matrix, inliers = cv2.estimateAffinePartial2D(
+#         src_pts, dst_pts, method=cv2.RANSAC, ransacReprojThreshold=3.0
+#     )
+    
+#     if transform_matrix is None:
+#         return curr_frame, np.ones_like(curr_frame), False
+    
+#     # Convert to full 3x3 homography matrix
+#     transform_matrix_h = np.vstack([transform_matrix, [0, 0, 1]])
+    
+#     # Calculate movement magnitude
+#     translation = np.linalg.norm(transform_matrix[:, 2])
+#     rotation = np.arccos(transform_matrix[0, 0]) * 180 / np.pi
+#     is_moving = translation > 5 or abs(rotation) > 2
+    
+#     # Apply compensation
+#     h, w = curr_frame.shape[:2]
+#     compensated_frame = cv2.warpAffine(
+#         curr_frame, 
+#         transform_matrix,
+#         (w, h),
+#         flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP
+#     )
+    
+#     # Create validity mask
+#     mask = cv2.warpAffine(
+#         np.ones_like(curr_frame),
+#         transform_matrix,
+#         (w, h),
+#         flags=cv2.INTER_NEAREST + cv2.WARP_INVERSE_MAP
+#     )
+    
+#     return compensated_frame, mask, is_moving
+
 def detect_and_compensate_camera_motion(prev_frame, curr_frame, max_features=1000):
     """
-    Detect and compensate for camera motion using feature matching.
+    Detect and compensate for camera motion using feature matching with homography.
     
     Args:
         prev_frame: Previous frame
@@ -56,35 +131,32 @@ def detect_and_compensate_camera_motion(prev_frame, curr_frame, max_features=100
     src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
     dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
     
-    # Estimate rigid transformation (translation + rotation)
-    transform_matrix, inliers = cv2.estimateAffinePartial2D(
+    # Estimate homography transformation
+    homography_matrix, inliers = cv2.findHomography(
         src_pts, dst_pts, method=cv2.RANSAC, ransacReprojThreshold=3.0
     )
     
-    if transform_matrix is None:
+    if homography_matrix is None:
         return curr_frame, np.ones_like(curr_frame), False
     
-    # Convert to full 3x3 homography matrix
-    transform_matrix_h = np.vstack([transform_matrix, [0, 0, 1]])
-    
     # Calculate movement magnitude
-    translation = np.linalg.norm(transform_matrix[:, 2])
-    rotation = np.arccos(transform_matrix[0, 0]) * 180 / np.pi
+    translation = np.linalg.norm(homography_matrix[:2, 2])
+    rotation = np.arccos(homography_matrix[0, 0]) * 180 / np.pi
     is_moving = translation > 5 or abs(rotation) > 2
     
-    # Apply compensation
+    # Apply compensation using homography
     h, w = curr_frame.shape[:2]
-    compensated_frame = cv2.warpAffine(
+    compensated_frame = cv2.warpPerspective(
         curr_frame, 
-        transform_matrix,
+        homography_matrix,
         (w, h),
         flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP
     )
     
     # Create validity mask
-    mask = cv2.warpAffine(
+    mask = cv2.warpPerspective(
         np.ones_like(curr_frame),
-        transform_matrix,
+        homography_matrix,
         (w, h),
         flags=cv2.INTER_NEAREST + cv2.WARP_INVERSE_MAP
     )
@@ -303,10 +375,10 @@ def create_redblue_visualization(positive_event: np.ndarray, negative_event: np.
     vis_image = np.zeros((h, w, 3), dtype=np.uint8)
     
     # Set red channel (positive events)
-    vis_image[positive_event > 0, 2] = 255  # Red channel
+    vis_image[positive_event > 1, 2] = 255  # Red channel
     
     # Set blue channel (negative events)
-    vis_image[negative_event > 0, 0] = 255  # Blue channel
+    vis_image[negative_event > 1, 0] = 255  # Blue channel
     
     return vis_image
 
@@ -392,9 +464,9 @@ def process_dataset_with_visualization(
 
 if __name__ == "__main__":
     # Configuration
-    INPUT_DIR = "datasets/MoCA-Video-Train"  # Update this
-    OUTPUT_DIR = "datasets/MoCA-Video-Train_event"       # Update this
-    NUM_WORKERS = 8                     # Adjust based on your CPU
+    INPUT_DIR = "D:\Dateset\MoCA-Mask-Pseudo/MoCA-Video-Test"  # Update this
+    OUTPUT_DIR = "datasets/MoCA-Video-Test_event"       # Update this
+    NUM_WORKERS = 12                    # Adjust based on your CPU
     DEBUG_MODE = True                   # Set to True to save debug visualizations
     
     # Process the dataset
@@ -405,7 +477,7 @@ if __name__ == "__main__":
         debug=DEBUG_MODE
     )
     
-    # 
+    
     sequence_dirs = [d for d in Path(OUTPUT_DIR).iterdir() if d.is_dir()]
     for seq_dir in sequence_dirs:
         save_images_with_padding(

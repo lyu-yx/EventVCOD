@@ -515,6 +515,11 @@ class SAM2Base(torch.nn.Module):
     def forward_image(self, img_batch: torch.Tensor):
         """Get the image feature on the input batch."""
         backbone_out = self.image_encoder(img_batch)
+
+        print('in forward_image backbone_out["backbone_fpn"] len', len(backbone_out["backbone_fpn"]))
+        print('in forward_image backbone_out["backbone_fpn"][0]', backbone_out["backbone_fpn"][0].shape)
+        print('in forward_image backbone_out["backbone_fpn"][1]', backbone_out["backbone_fpn"][1].shape)
+        print('in forward_image backbone_out["backbone_fpn"][2]', backbone_out["backbone_fpn"][2].shape)
         if self.use_high_res_features_in_sam:
             # precompute projected level 0 and level 1 features in SAM decoder
             # to avoid running it again on every SAM click
@@ -524,11 +529,18 @@ class SAM2Base(torch.nn.Module):
             backbone_out["backbone_fpn"][1] = self.sam_mask_decoder.conv_s1(
                 backbone_out["backbone_fpn"][1]
             )
+
+        print('in forward_image backbone_out["backbone_fpn"] len', len(backbone_out["backbone_fpn"]))
+        print('in forward_image backbone_out["backbone_fpn"][0]', backbone_out["backbone_fpn"][0].shape)
+        print('in forward_image backbone_out["backbone_fpn"][1]', backbone_out["backbone_fpn"][1].shape)
+        print('in forward_image backbone_out["backbone_fpn"][2]', backbone_out["backbone_fpn"][2].shape)
         return backbone_out
     
     def forward_event(self, img_batch: torch.Tensor):
         """Get the image feature on the input batch."""
         backbone_out = self.event_encoder(img_batch)
+
+        
         if self.use_high_res_features_in_sam:
             # precompute projected level 0 and level 1 features in SAM decoder
             # to avoid running it again on every SAM click
@@ -546,6 +558,8 @@ class SAM2Base(torch.nn.Module):
         assert len(backbone_out["backbone_fpn"]) == len(backbone_out["vision_pos_enc"])
         assert len(backbone_out["backbone_fpn"]) >= self.num_feature_levels
 
+        
+
         feature_maps = backbone_out["backbone_fpn"][-self.num_feature_levels :]
         vision_pos_embeds = backbone_out["vision_pos_enc"][-self.num_feature_levels :]
 
@@ -553,6 +567,12 @@ class SAM2Base(torch.nn.Module):
         # flatten NxCxHxW to HWxNxC
         vision_feats = [x.flatten(2).permute(2, 0, 1) for x in feature_maps]
         vision_pos_embeds = [x.flatten(2).permute(2, 0, 1) for x in vision_pos_embeds]
+
+        print('in _prepare_backbone_features backbone_out["backbone_fpn"] len', len(backbone_out["backbone_fpn"]))
+        print('in _prepare_backbone_features backbone_out["backbone_fpn"][0]', backbone_out["backbone_fpn"][0].shape)
+        print('in _prepare_backbone_features backbone_out["backbone_fpn"][1]', backbone_out["backbone_fpn"][1].shape)
+        print('in _prepare_backbone_features backbone_out["backbone_fpn"][2]', backbone_out["backbone_fpn"][2].shape)
+        print('in _prepare_backbone_features vision_feats', vision_feats[0].shape)
 
         return backbone_out, vision_feats, vision_pos_embeds, feat_sizes
 
