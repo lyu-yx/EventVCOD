@@ -858,8 +858,6 @@ class SAM2Base(torch.nn.Module):
         self,
         frame_idx,
         is_init_cond_frame,
-        current_backbone_fpn,
-        current_backbone_fpn_evt,
         current_vision_feats,
         current_vision_pos_embeds,
         current_vision_feats_event,

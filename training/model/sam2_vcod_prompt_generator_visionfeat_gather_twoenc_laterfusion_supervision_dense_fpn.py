@@ -348,9 +348,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             img_ids = input.flat_obj_to_img_idx[stage_id]
             if img_feats_already_computed:
                 # Retrieve image features according to img_ids (if they are already computed).
-                current_backbone_fpn = [x[:, img_ids] for x in backbone_fpn]
-                current_backbone_fpn_evt = [x[:, img_ids] for x in backbone_fpn_evt]
-
+                
                 current_vision_feats = [x[:, img_ids] for x in vision_feats]
                 current_vision_pos_embeds = [x[:, img_ids] for x in vision_pos_embeds]
                 current_vision_feats_event = [x[:, img_ids] for x in vision_feats_event]
@@ -376,8 +374,6 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             current_out, embedding_loss = self.track_step(
                 frame_idx=stage_id,
                 is_init_cond_frame=stage_id in init_cond_frames,
-                current_backbone_fpn = current_backbone_fpn,
-                current_backbone_fpn_evt = current_backbone_fpn_evt,
                 current_vision_feats=current_vision_feats,
                 current_vision_pos_embeds=current_vision_pos_embeds,
                 current_vision_feats_event=current_vision_feats_event,
@@ -418,8 +414,6 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         self,
         frame_idx,
         is_init_cond_frame,
-        current_backbone_fpn,
-        current_backbone_fpn_evt,
         current_vision_feats,
         current_vision_pos_embeds,
         current_vision_feats_event,
@@ -440,8 +434,6 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         current_out, sam_outputs, high_res_features, pix_feat, event_feat, embedding_loss = self._track_step(
             frame_idx,
             is_init_cond_frame,
-            current_backbone_fpn,
-            current_backbone_fpn_evt,
             current_vision_feats,
             current_vision_pos_embeds,
             current_vision_feats_event,
