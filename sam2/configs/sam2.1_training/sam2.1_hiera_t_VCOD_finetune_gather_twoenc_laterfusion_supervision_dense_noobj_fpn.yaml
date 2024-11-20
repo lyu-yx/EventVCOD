@@ -82,30 +82,6 @@ trainer:
         fpn_top_down_levels: [2, 3]  # output level 0 and 1 directly use the backbone features
         fpn_interp_model: nearest
     
-    event_encoder:
-      _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
-      scalp: 1
-      trunk:
-        _target_: sam2.modeling.backbones.hieradet.Hiera
-        embed_dim: 96
-        num_heads: 1
-        stages: [1, 2, 7, 2]
-        global_att_blocks: [5, 7, 9]
-        window_pos_embed_bkg_spatial_size: [7, 7]
-      neck:
-        _target_: sam2.modeling.backbones.image_encoder.FpnNeck
-        position_encoding:
-          _target_: sam2.modeling.position_encoding.PositionEmbeddingSine
-          num_pos_feats: 256
-          normalize: true
-          scale: null
-          temperature: 10000
-        d_model: 256
-        backbone_channel_list: [768, 384, 192, 96]
-        fpn_top_down_levels: [2, 3]  # output level 0 and 1 directly use the backbone features
-        fpn_interp_model: nearest
-
-
     memory_attention:
       _target_: sam2.modeling.memory_attention.MemoryAttention
       d_model: 256

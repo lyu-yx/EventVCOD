@@ -28,7 +28,6 @@ class SAM2Base(torch.nn.Module):
     def __init__(
         self,
         image_encoder,
-        event_encoder,
         short_long_relation_attention,
         memory_attention,
         memory_encoder,
@@ -111,7 +110,7 @@ class SAM2Base(torch.nn.Module):
 
         # Part 1: the image backbone
         self.image_encoder = image_encoder
-        self.event_encoder = event_encoder
+
         # Use level 0, 1, 2 for high-res setting, or just level 2 for the default setting
         self.use_high_res_features_in_sam = use_high_res_features_in_sam
         self.num_feature_levels = 3 if use_high_res_features_in_sam else 1
@@ -888,7 +887,18 @@ class SAM2Base(torch.nn.Module):
             high_res_features = None
             high_res_event_features = None
 
+
+        print('len high_res_event_features', len(high_res_event_features))
+        print('len high_res_event_features[0]', high_res_event_features[0].shape)
+        print('len high_res_event_features[1]', high_res_event_features[1].shape)
+        print('len high_res_event_features[2]', high_res_event_features[2].shape)
+
         high_res_event_features = self._event_adaptor(high_res_event_features)
+        
+        print('len high_res_event_features', len(high_res_event_features))
+        print('len high_res_event_features[0]', high_res_event_features[0].shape)
+        print('len high_res_event_features[1]', high_res_event_features[1].shape)
+        print('len high_res_event_features[2]', high_res_event_features[2].shape)
 
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
             # When use_mask_input_as_output_without_sam=True, we directly output the mask input
