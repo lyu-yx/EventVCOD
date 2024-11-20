@@ -18,7 +18,7 @@ class FPNFeatureAdaptor(nn.Module):
                 nn.Conv2d(in_channels, in_channels, kernel_size=1, stride=1, padding=0),
                 nn.GELU(),
                 nn.Conv2d(in_channels, in_channels, kernel_size=1, stride=1, padding=0),
-                nn.LayerNorm(normalized_shape=[in_channels, None, None])
+                nn.LayerNorm()
             ) for in_channels in in_channels_list
         ])
         

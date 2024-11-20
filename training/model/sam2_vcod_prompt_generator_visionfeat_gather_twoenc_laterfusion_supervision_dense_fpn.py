@@ -26,7 +26,6 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
     def __init__(
         self,
         image_encoder,
-        event_encoder,
         short_long_relation_attention=None,
         memory_attention=None,
         memory_encoder=None,
@@ -74,7 +73,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         freeze_memory_encoder=False,
         **kwargs,
     ):
-        super().__init__(image_encoder, event_encoder, short_long_relation_attention, memory_attention, memory_encoder, **kwargs)
+        super().__init__(image_encoder, short_long_relation_attention, memory_attention, memory_encoder, **kwargs)
         self.use_act_ckpt_iterative_pt_sampling = use_act_ckpt_iterative_pt_sampling
         self.forward_backbone_per_frame_for_eval = forward_backbone_per_frame_for_eval
 

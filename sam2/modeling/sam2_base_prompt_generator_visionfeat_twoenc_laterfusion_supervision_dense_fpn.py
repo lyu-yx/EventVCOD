@@ -516,7 +516,7 @@ class SAM2Base(torch.nn.Module):
             object_score_logits,
         )
     
-    def _event_adaptor(high_res_event_features):
+    def _event_adaptor(self, high_res_event_features):
         """
         Wrapper function for the FPNFeatureAdaptor.
         
@@ -887,18 +887,13 @@ class SAM2Base(torch.nn.Module):
             high_res_features = None
             high_res_event_features = None
 
-
-        print('len high_res_event_features', len(high_res_event_features))
-        print('len high_res_event_features[0]', high_res_event_features[0].shape)
-        print('len high_res_event_features[1]', high_res_event_features[1].shape)
-        print('len high_res_event_features[2]', high_res_event_features[2].shape)
-
-        high_res_event_features = self._event_adaptor(high_res_event_features)
+        # len high_res_event_features 2
+        # len high_res_event_features[0] torch.Size([1, 32, 256, 256])
+        # len high_res_event_features[1] torch.Size([1, 64, 128, 128])
         
-        print('len high_res_event_features', len(high_res_event_features))
-        print('len high_res_event_features[0]', high_res_event_features[0].shape)
-        print('len high_res_event_features[1]', high_res_event_features[1].shape)
-        print('len high_res_event_features[2]', high_res_event_features[2].shape)
+        high_res_event_features_adp = self._event_adaptor(high_res_event_features)
+
+        
 
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
             # When use_mask_input_as_output_without_sam=True, we directly output the mask input
@@ -908,9 +903,10 @@ class SAM2Base(torch.nn.Module):
 
             pix_feat_event = current_vision_feats_event[-1].permute(1, 2, 0)
             pix_feat_event = pix_feat_event.view(-1, self.hidden_dim, *feat_sizes[-1])
+            pix_feat_event_adp = self._event_adaptor([pix_feat_event])
 
             sam_outputs = self._use_mask_as_output(
-                pix_feat, pix_feat_event, high_res_features, high_res_event_features, mask_inputs
+                pix_feat, pix_feat_event_adp, high_res_features, high_res_event_features_adp, mask_inputs
             )
         else:
             # fused the visual feature with previous memory features in the memory bank
@@ -949,7 +945,7 @@ class SAM2Base(torch.nn.Module):
                 point_inputs=point_inputs,
                 mask_inputs=mask_inputs,
                 high_res_features=high_res_features,
-                high_res_event_features=high_res_event_features,
+                high_res_event_features=high_res_event_features_adp,
                 multimask_output=multimask_output,
             )
 
