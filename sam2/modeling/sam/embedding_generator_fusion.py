@@ -52,10 +52,10 @@ class MultiResolutionFusion(nn.Module):
             feature_adapted = adapter(feature)
             
             # Resize to the resolution of the first (highest resolution) feature
-            if feature_adapted.shape[-2:] != features_list[0].shape[-2:]:
+            if feature_adapted.shape[-2:] != features_list[2].shape[-2:]:
                 feature_adapted = F.interpolate(
                     feature_adapted, 
-                    size=features_list[0].shape[-2:], 
+                    size=features_list[2].shape[-2:], 
                     mode='bilinear', 
                     align_corners=False
                 )
@@ -157,8 +157,11 @@ class EmbeddingGenerator(nn.Module):
         event_multiscale = torch.sum(torch.stack([layer(event_features) for layer in self.event_processor]), dim=0)
         
         # Learnable fusion of FPN features
-        fpn_fusion_features = self.fpn_backbone_fusion(high_res_features)
-        fpn_fusion_event_features = self.fpn_event_fusion(high_res_event_features)
+        high_res_features_fpn = high_res_features + [backbone_features]
+        high_res_event_features_fpn = high_res_event_features + [event_features] 
+
+        fpn_fusion_features = self.fpn_backbone_fusion(high_res_features_fpn)
+        fpn_fusion_event_features = self.fpn_event_fusion(high_res_event_features_fpn)
         
         # Combine original and FPN features
         combined_backbone = backbone_multiscale + fpn_fusion_features

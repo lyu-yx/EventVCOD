@@ -64,11 +64,9 @@ trainer:
       scalp: 1
       trunk:
         _target_: sam2.modeling.backbones.hieradet.Hiera
-        embed_dim: 96
-        num_heads: 1
-        stages: [1, 2, 7, 2]
-        global_att_blocks: [5, 7, 9]
-        window_pos_embed_bkg_spatial_size: [7, 7]
+        embed_dim: 112
+        num_heads: 2
+        drop_path_rate: 0.1
       neck:
         _target_: sam2.modeling.backbones.image_encoder.FpnNeck
         position_encoding:
@@ -78,7 +76,7 @@ trainer:
           scale: null
           temperature: 10000
         d_model: 256
-        backbone_channel_list: [768, 384, 192, 96]
+        backbone_channel_list: [896, 448, 224, 112]
         fpn_top_down_levels: [2, 3]  # output level 0 and 1 directly use the backbone features
         fpn_interp_model: nearest
     
@@ -368,7 +366,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_t_visionfeat_gather_twoenc_laterfusion_supervision_dense_noobj_fpn/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather_twoenc_laterfusion_supervision_dense_noobj_fpn/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
