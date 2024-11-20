@@ -17,6 +17,7 @@ from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 from sam2.modeling.sam.embedding_generator import initialize_embedding_generator
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
+from sam2.modeling.sam.event_adaptor import FPNFeatureAdaptor
 # from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
 # a large negative value as a placeholder score for missing objects
@@ -296,6 +297,7 @@ class SAM2Base(torch.nn.Module):
         point_inputs=None,
         mask_inputs=None,
         high_res_features=None,
+        high_res_event_features=None,
         multimask_output=False,
     ):
         """
@@ -379,7 +381,9 @@ class SAM2Base(torch.nn.Module):
             masks=sam_mask_prompt,
         )
 
-        sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features, event_features)# a) Handle point prompts
+        # sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features, event_features)# a) Handle point prompts
+        sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features, event_features, high_res_features, high_res_event_features)# a) Handle point prompts
+
         (
             low_res_multimasks,
             ious,
@@ -489,6 +493,7 @@ class SAM2Base(torch.nn.Module):
                 backbone_features=backbone_features,
                 mask_inputs=self.mask_downsample(mask_inputs_float),
                 high_res_features=high_res_features,
+                high_res_event_features=high_res_event_features,
             )
         # In this method, we are treating mask_input as output, e.g. using it directly to create spatial mem;
         # Below, we follow the same design axiom to use mask_input to decide if obj appears or not instead of relying
@@ -511,6 +516,31 @@ class SAM2Base(torch.nn.Module):
             obj_ptr,
             object_score_logits,
         )
+    
+    def _event_adaptor(high_res_event_features):
+        """
+        Wrapper function for the FPNFeatureAdaptor.
+        
+        Args:
+            high_res_event_features (list): Input feature tensors 
+            from FPN levels
+        
+        Returns:
+            list: Adapted event-like features
+        """
+        # Extract channel counts for each FPN level
+        in_channels_list = [feat.shape[1] for feat in high_res_event_features]
+        
+        # Create adaptor with detected channel configurations
+        adaptor = FPNFeatureAdaptor(in_channels_list)
+        
+        # Move adaptor to the same device as input features
+        adaptor = adaptor.to(high_res_event_features[0].device)
+        
+        # Adapt features across all FPN levels
+        adapted_features = adaptor(high_res_event_features)
+        
+        return adapted_features
 
     def forward_image(self, img_batch: torch.Tensor):
         """Get the image feature on the input batch."""
@@ -536,21 +566,21 @@ class SAM2Base(torch.nn.Module):
         # print('in forward_image backbone_out["backbone_fpn"][2]', backbone_out["backbone_fpn"][2].shape)
         return backbone_out
     
-    def forward_event(self, img_batch: torch.Tensor):
-        """Get the image feature on the input batch."""
-        backbone_out = self.event_encoder(img_batch)
+    # def forward_event(self, img_batch: torch.Tensor):
+    #     """Get the image feature on the input batch."""
+    #     backbone_out = self.event_encoder(img_batch)
 
         
-        if self.use_high_res_features_in_sam:
-            # precompute projected level 0 and level 1 features in SAM decoder
-            # to avoid running it again on every SAM click
-            backbone_out["backbone_fpn"][0] = self.sam_mask_decoder.conv_s0(
-                backbone_out["backbone_fpn"][0]
-            )
-            backbone_out["backbone_fpn"][1] = self.sam_mask_decoder.conv_s1(
-                backbone_out["backbone_fpn"][1]
-            )
-        return backbone_out
+    #     if self.use_high_res_features_in_sam:
+    #         # precompute projected level 0 and level 1 features in SAM decoder
+    #         # to avoid running it again on every SAM click
+    #         backbone_out["backbone_fpn"][0] = self.sam_mask_decoder.conv_s0(
+    #             backbone_out["backbone_fpn"][0]
+    #         )
+    #         backbone_out["backbone_fpn"][1] = self.sam_mask_decoder.conv_s1(
+    #             backbone_out["backbone_fpn"][1]
+    #         )
+    #     return backbone_out
 
     def _prepare_backbone_features(self, backbone_out):
         """Prepare and flatten visual features."""
@@ -860,6 +890,8 @@ class SAM2Base(torch.nn.Module):
             high_res_features = None
             high_res_event_features = None
 
+        high_res_event_features = self._event_adaptor(high_res_event_features)
+
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
             # When use_mask_input_as_output_without_sam=True, we directly output the mask input
             # (see it as a GT mask) without using a SAM prompt encoder + mask decoder.
@@ -909,6 +941,7 @@ class SAM2Base(torch.nn.Module):
                 point_inputs=point_inputs,
                 mask_inputs=mask_inputs,
                 high_res_features=high_res_features,
+                high_res_event_features=high_res_event_features,
                 multimask_output=multimask_output,
             )
 
