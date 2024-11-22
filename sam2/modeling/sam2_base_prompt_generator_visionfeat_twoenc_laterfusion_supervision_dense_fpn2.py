@@ -912,7 +912,7 @@ class SAM2Base(torch.nn.Module):
         else:
             # fused the visual feature with previous memory features in the memory bank
             
-            current_vision_feats_event_adp = self._event_adaptor(current_vision_feats_event[-1])
+            current_vision_feats_event_adp = self._event_adaptor([current_vision_feats_event[-1]])
 
             pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
                 frame_idx=frame_idx,
