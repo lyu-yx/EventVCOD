@@ -31,6 +31,21 @@ class MultiResolutionFusion(nn.Module):
             ) for in_channels in [32, 64, 256]  # Adjust based on your specific feature channels
         ])
         
+        # Convolutional operations for resolution alignment to 64x64
+        self.resolution_aligners = nn.ModuleList([
+            nn.Sequential(  # Downsample from 256x256 to 64x64
+                nn.Conv2d(target_channels, target_channels, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(target_channels, target_channels, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(inplace=True)
+            ),
+            nn.Sequential(  # Downsample from 128x128 to 64x64
+                nn.Conv2d(target_channels, target_channels, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(inplace=True)
+            ),
+            nn.Identity()  # No operation for 64x64
+        ])
+        
         # Learnable fusion weights
         self.fusion_weights = nn.Parameter(torch.ones(3, dtype=torch.float32))
         
@@ -45,22 +60,16 @@ class MultiResolutionFusion(nn.Module):
         # Normalize fusion weights
         normalized_weights = F.softmax(self.fusion_weights, dim=0)
         
-        # Process and resize features
+        # Process and resize features using convolutional aligners
         processed_features = []
-        for adapter, feature in zip(self.feature_adapters, features_list):
+        for adapter, aligner, feature in zip(self.feature_adapters, self.resolution_aligners, features_list):
             # Adaptive channel adjustment
             feature_adapted = adapter(feature)
             
-            # Resize to the resolution of the first (highest resolution) feature
-            if feature_adapted.shape[-2:] != features_list[2].shape[-2:]:
-                feature_adapted = F.interpolate(
-                    feature_adapted, 
-                    size=features_list[2].shape[-2:], 
-                    mode='bilinear', 
-                    align_corners=False
-                )
+            # Resolution alignment to the deepest feature resolution (64x64)
+            feature_aligned = aligner(feature_adapted)
             
-            processed_features.append(feature_adapted)
+            processed_features.append(feature_aligned)
         
         # Weighted fusion
         weighted_features = [w * feat for w, feat in zip(normalized_weights, processed_features)]
@@ -68,6 +77,25 @@ class MultiResolutionFusion(nn.Module):
         # Concatenate and fuse
         fused_features = torch.cat(weighted_features, dim=1)
         return self.fusion_conv(fused_features)
+
+class SEBlock(nn.Module):
+    def __init__(self, channels, reduction=16):
+        super(SEBlock, self).__init__()
+        self.pool = nn.Conv2d(channels, channels, kernel_size=1)  # Learnable pooling
+        self.fc = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Linear(channels, channels // reduction),
+            nn.ReLU(),
+            nn.Linear(channels // reduction, channels),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        batch, channels, _, _ = x.size()
+        pooled = self.pool(x)
+        y = self.fc(pooled.view(batch, channels)).view(batch, channels, 1, 1)
+        return x * y
+
 
 
 class EmbeddingGenerator(nn.Module):
@@ -87,28 +115,29 @@ class EmbeddingGenerator(nn.Module):
         self.activation = activation()
         
         # Multi-scale feature refinement for backbone and event features
-        self.backbone_processor = nn.ModuleList([
-            nn.Sequential(
-                nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=rate, dilation=rate),
-                nn.BatchNorm2d(mask_in_chans),
-                activation()
-            ) for rate in [1, 2, 4, 8]
-        ])
+        # self.backbone_processor = nn.ModuleList([
+        #     nn.Sequential(
+        #         nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=rate, dilation=rate),
+        #         nn.BatchNorm2d(mask_in_chans),
+        #         activation()
+        #     ) for rate in [1, 2, 4, 8]
+        # ])
         
-        self.event_processor = nn.ModuleList([
-            nn.Sequential(
-                nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=rate, dilation=rate),
-                nn.BatchNorm2d(mask_in_chans),
-                activation()
-            ) for rate in [1, 2, 4, 8]
-        ])
+        # self.event_processor = nn.ModuleList([
+        #     nn.Sequential(
+        #         nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=rate, dilation=rate),
+        #         nn.BatchNorm2d(mask_in_chans),
+        #         activation()
+        #     ) for rate in [1, 2, 4, 8]
+        # ])
         
         # Gated mechanism for controlling event feature contribution
-        self.gate = nn.Sequential(
-            nn.Conv2d(mask_in_chans * 2, mask_in_chans, kernel_size=3, padding=1),
-            nn.Sigmoid()
-        )
-        
+        # self.gate = nn.Sequential(
+        #     nn.Conv2d(mask_in_chans * 2, mask_in_chans, kernel_size=3, padding=1),
+        #     nn.Sigmoid()
+        # )
+        self.gate = SEBlock(mask_in_chans * 2)
+
         # Channel and Spatial attention
         self.channel_attention = ChannelAttention(mask_in_chans)
         self.spatial_attention = SpatialAttention()
@@ -153,8 +182,8 @@ class EmbeddingGenerator(nn.Module):
             high_res_features: List[torch.Tensor],
             high_res_event_features: List[torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         # Multi-scale processing for backbone and event features
-        backbone_multiscale = torch.sum(torch.stack([layer(backbone_features) for layer in self.backbone_processor]), dim=0)
-        event_multiscale = torch.sum(torch.stack([layer(event_features) for layer in self.event_processor]), dim=0)
+        # backbone_multiscale = torch.sum(torch.stack([layer(backbone_features) for layer in self.backbone_processor]), dim=0)
+        # event_multiscale = torch.sum(torch.stack([layer(event_features) for layer in self.event_processor]), dim=0)
         
         # Learnable fusion of FPN features
         high_res_features_fpn = high_res_features + [backbone_features]
@@ -164,14 +193,15 @@ class EmbeddingGenerator(nn.Module):
         fpn_fusion_event_features = self.fpn_event_fusion(high_res_event_features_fpn)
         
         # Combine original and FPN features
-        combined_backbone = backbone_multiscale + fpn_fusion_features
-        combined_event = event_multiscale + fpn_fusion_event_features
+        combined_backbone = backbone_features + fpn_fusion_features
+        combined_event = event_features + fpn_fusion_event_features
         
         # Gated fusion: Control the contribution of event features
         combined_features = torch.cat([combined_backbone, combined_event], dim=1)
-        gated_features = self.gate(combined_features) * combined_event
-        dominant_features = combined_backbone + gated_features
         
+        gated_features = self.gate(combined_event) * combined_features
+        dominant_features = combined_backbone + gated_features
+
         # Channel and spatial attention to enhance features
         features = self.channel_attention(dominant_features)
         features = self.spatial_attention(features)
