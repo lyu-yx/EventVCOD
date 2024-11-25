@@ -81,9 +81,8 @@ class MultiResolutionFusion(nn.Module):
 class SEBlock(nn.Module):
     def __init__(self, channels, reduction=16):
         super(SEBlock, self).__init__()
-        self.pool = nn.Conv2d(channels, channels, kernel_size=1)  # Learnable pooling
+        self.pool = nn.AdaptiveAvgPool2d(1)  # Ensure output is [batch, channels, 1, 1]
         self.fc = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
             nn.Linear(channels, channels // reduction),
             nn.ReLU(),
             nn.Linear(channels // reduction, channels),
@@ -92,8 +91,8 @@ class SEBlock(nn.Module):
 
     def forward(self, x):
         batch, channels, _, _ = x.size()
-        pooled = self.pool(x)
-        y = self.fc(pooled.view(batch, channels)).view(batch, channels, 1, 1)
+        pooled = self.pool(x).view(batch, channels)  # Flatten spatial dimensions
+        y = self.fc(pooled).view(batch, channels, 1, 1)  # Reshape to [batch, channels, 1, 1]
         return x * y
 
 
@@ -136,7 +135,7 @@ class EmbeddingGenerator(nn.Module):
         #     nn.Conv2d(mask_in_chans * 2, mask_in_chans, kernel_size=3, padding=1),
         #     nn.Sigmoid()
         # )
-        self.gate = SEBlock(mask_in_chans * 2)
+        self.gate = SEBlock(mask_in_chans)
 
         # Channel and Spatial attention
         self.channel_attention = ChannelAttention(mask_in_chans)
