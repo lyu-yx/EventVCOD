@@ -78,22 +78,74 @@ class MultiResolutionFusion(nn.Module):
         fused_features = torch.cat(weighted_features, dim=1)
         return self.fusion_conv(fused_features)
 
-class SEBlock(nn.Module):
-    def __init__(self, channels, reduction=16):
-        super(SEBlock, self).__init__()
-        self.pool = nn.AdaptiveAvgPool2d(1)  # Ensure output is [batch, channels, 1, 1]
-        self.fc = nn.Sequential(
-            nn.Linear(channels, channels // reduction),
-            nn.ReLU(),
-            nn.Linear(channels // reduction, channels),
+import torch
+import torch.nn as nn
+
+class CrossFeatureGating(nn.Module):
+    def __init__(self, in_channels=256, reduction=8, backbone_weight=0.8, event_weight=0.4):
+        """
+        Cross-feature gating module with backbone dominance.
+
+        Args:
+            in_channels: Number of input channels for both features.
+            reduction: Reduction ratio for the gating mechanism.
+            backbone_weight: Weight for retaining original backbone information.
+            event_weight: Weight for retaining original event information.
+        """
+        super(CrossFeatureGating, self).__init__()
+        
+        # Gating for combined_event using combined_backbone
+        self.gate_event = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),  # Global average pooling
+            nn.Conv2d(in_channels, in_channels // reduction, kernel_size=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels // reduction, in_channels, kernel_size=1),
             nn.Sigmoid()
         )
+        
+        # Gating for combined_backbone using combined_event
+        self.gate_backbone = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),  # Global average pooling
+            nn.Conv2d(in_channels, in_channels // reduction, kernel_size=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels // reduction, in_channels, kernel_size=1),
+            nn.Sigmoid()
+        )
+        
+        # Weights for retaining information
+        self.backbone_weight = backbone_weight
+        self.event_weight = event_weight
 
-    def forward(self, x):
-        batch, channels, _, _ = x.size()
-        pooled = self.pool(x).view(batch, channels)  # Flatten spatial dimensions
-        y = self.fc(pooled).view(batch, channels, 1, 1)  # Reshape to [batch, channels, 1, 1]
-        return x * y
+    def forward(self, combined_backbone, combined_event):
+        """
+        Forward pass of the cross-feature gating module.
+
+        Args:
+            combined_backbone: Dominant feature map of shape [B, C, H, W].
+            combined_event: Auxiliary feature map of shape [B, C, H, W].
+
+        Returns:
+            gated_combined_backbone: Enhanced dominant feature map.
+            gated_combined_event: Modulated auxiliary feature map.
+        """
+        # Gating for combined_event using combined_backbone
+        gate_event = self.gate_event(combined_backbone)  # Shape: [B, C, 1, 1]
+        gated_combined_event = combined_event * gate_event  # Modulate event features
+
+        # Gating for combined_backbone using combined_event
+        gate_backbone = self.gate_backbone(combined_event)  # Shape: [B, C, 1, 1]
+        gated_combined_backbone = combined_backbone * gate_backbone  # Modulate backbone features
+
+        # Retain more information from the backbone
+        gated_combined_backbone = self.backbone_weight * gated_combined_backbone + \
+                                  (1 - self.backbone_weight) * combined_backbone
+        
+        # Optionally retain some information in combined_event
+        gated_combined_event = self.event_weight * gated_combined_event + \
+                               (1 - self.event_weight) * combined_event
+
+        return gated_combined_backbone, gated_combined_event
+
 
 
 
@@ -135,7 +187,7 @@ class EmbeddingGenerator(nn.Module):
         #     nn.Conv2d(mask_in_chans * 2, mask_in_chans, kernel_size=3, padding=1),
         #     nn.Sigmoid()
         # )
-        self.gate = SEBlock(mask_in_chans)
+        self.gate = CrossFeatureGating(mask_in_chans)
 
         # Channel and Spatial attention
         self.channel_attention = ChannelAttention(mask_in_chans)
@@ -196,10 +248,10 @@ class EmbeddingGenerator(nn.Module):
         combined_event = event_features + fpn_fusion_event_features
         
         # Gated fusion: Control the contribution of event features
-        combined_features = torch.cat([combined_backbone, combined_event], dim=1)
+        # combined_features = torch.cat([combined_backbone, combined_event], dim=1)
         
-        gated_features = self.gate(combined_event) * combined_features
-        dominant_features = combined_backbone + gated_features
+        gated_combined_backbone, _ = self.gate(combined_backbone, combined_event)
+        dominant_features = combined_backbone + gated_combined_backbone
 
         # Channel and spatial attention to enhance features
         features = self.channel_attention(dominant_features)
