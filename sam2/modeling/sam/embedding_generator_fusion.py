@@ -31,21 +31,6 @@ class MultiResolutionFusion(nn.Module):
             ) for in_channels in [32, 64, 256]  # Adjust based on your specific feature channels
         ])
         
-        # Convolutional operations for resolution alignment to 64x64
-        self.resolution_aligners = nn.ModuleList([
-            nn.Sequential(  # Downsample from 256x256 to 64x64
-                nn.Conv2d(target_channels, target_channels, kernel_size=3, stride=2, padding=1),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(target_channels, target_channels, kernel_size=3, stride=2, padding=1),
-                nn.ReLU(inplace=True)
-            ),
-            nn.Sequential(  # Downsample from 128x128 to 64x64
-                nn.Conv2d(target_channels, target_channels, kernel_size=3, stride=2, padding=1),
-                nn.ReLU(inplace=True)
-            ),
-            nn.Identity()  # No operation for 64x64
-        ])
-        
         # Learnable fusion weights
         self.fusion_weights = nn.Parameter(torch.ones(3, dtype=torch.float32))
         
@@ -60,16 +45,22 @@ class MultiResolutionFusion(nn.Module):
         # Normalize fusion weights
         normalized_weights = F.softmax(self.fusion_weights, dim=0)
         
-        # Process and resize features using convolutional aligners
+        # Process and resize features
         processed_features = []
-        for adapter, aligner, feature in zip(self.feature_adapters, self.resolution_aligners, features_list):
+        for adapter, feature in zip(self.feature_adapters, features_list):
             # Adaptive channel adjustment
             feature_adapted = adapter(feature)
             
-            # Resolution alignment to the deepest feature resolution (64x64)
-            feature_aligned = aligner(feature_adapted)
+            # Resize to the resolution of the first (highest resolution) feature
+            if feature_adapted.shape[-2:] != features_list[2].shape[-2:]:
+                feature_adapted = F.interpolate(
+                    feature_adapted, 
+                    size=features_list[2].shape[-2:], 
+                    mode='bilinear', 
+                    align_corners=False
+                )
             
-            processed_features.append(feature_aligned)
+            processed_features.append(feature_adapted)
         
         # Weighted fusion
         weighted_features = [w * feat for w, feat in zip(normalized_weights, processed_features)]
@@ -78,8 +69,7 @@ class MultiResolutionFusion(nn.Module):
         fused_features = torch.cat(weighted_features, dim=1)
         return self.fusion_conv(fused_features)
 
-import torch
-import torch.nn as nn
+
 
 class CrossFeatureGating(nn.Module):
     def __init__(self, in_channels=256, reduction=8, backbone_weight=0.8, event_weight=0.4):
