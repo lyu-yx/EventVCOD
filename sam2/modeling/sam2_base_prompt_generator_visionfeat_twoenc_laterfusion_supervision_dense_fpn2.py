@@ -405,7 +405,8 @@ class SAM2Base(torch.nn.Module):
         mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt)
 
         # Combine the losses (you can use a weighted sum if needed)
-        embedding_loss = mse_dense + mse_sparse * 5
+        # embedding_loss = mse_dense + mse_sparse * 5
+        embedding_loss = mse_dense 
 
         if self.pred_obj_scores:  # predict if there is an object disappear in following frame
             is_obj_appearing = object_score_logits > 0
