@@ -81,9 +81,8 @@ class MultiResolutionFusion(nn.Module):
 class SEBlock(nn.Module):
     def __init__(self, channels, reduction=16):
         super(SEBlock, self).__init__()
-        self.pool = nn.Conv2d(channels, channels, kernel_size=1)  # Learnable pooling
+        self.pool = nn.AdaptiveAvgPool2d(1)  # Global pooling to [B, C, 1, 1]
         self.fc = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
             nn.Linear(channels, channels // reduction),
             nn.ReLU(),
             nn.Linear(channels // reduction, channels),
@@ -92,8 +91,8 @@ class SEBlock(nn.Module):
 
     def forward(self, x):
         batch, channels, _, _ = x.size()
-        pooled = self.pool(x)
-        y = self.fc(pooled.view(batch, channels)).view(batch, channels, 1, 1)
+        pooled = self.pool(x).view(batch, channels)  # Flatten to [B, C]
+        y = self.fc(pooled).view(batch, channels, 1, 1)  # Reshape to [B, C, 1, 1]
         return x * y
 
 
@@ -197,9 +196,9 @@ class EmbeddingGenerator(nn.Module):
         combined_event = event_features + fpn_fusion_event_features
         
         # Gated fusion: Control the contribution of event features
-        combined_features = torch.cat([combined_backbone, combined_event], dim=1)
+        # combined_features = torch.cat([combined_backbone, combined_event], dim=1)
         
-        gated_features = self.gate(combined_event) * combined_features
+        gated_features = self.gate(combined_event) * combined_backbone
         dominant_features = combined_backbone + gated_features
 
         # Channel and spatial attention to enhance features
