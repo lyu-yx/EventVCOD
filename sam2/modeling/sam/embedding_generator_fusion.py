@@ -136,7 +136,7 @@ class EmbeddingGenerator(nn.Module):
         #     nn.Conv2d(mask_in_chans * 2, mask_in_chans, kernel_size=3, padding=1),
         #     nn.Sigmoid()
         # )
-        self.gate = SEBlock(mask_in_chans * 2)
+        self.gate = SEBlock(mask_in_chans)
 
         # Channel and Spatial attention
         self.channel_attention = ChannelAttention(mask_in_chans)
