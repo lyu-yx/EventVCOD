@@ -178,7 +178,7 @@ trainer:
     # apply scaled sigmoid on mask logits for memory encoder, and directly feed input mask as output mask
     sigmoid_scale_for_mem_enc: 20.0
     sigmoid_bias_for_mem_enc: -10.0
-    use_mask_input_as_output_without_sam: false
+    use_mask_input_as_output_without_sam: true
     # Memory
     directly_add_no_mem_embed: true
     no_obj_embed_spatial: true
@@ -366,7 +366,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather_twoenc_laterfusion_supervision_dense_noobj_fpn3/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather_twoenc_laterfusion_supervision_dense_noobj_fpn_msakdir/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:

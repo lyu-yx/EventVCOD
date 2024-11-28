@@ -12,7 +12,7 @@ from torch.nn.init import trunc_normal_
 
 
 from sam2.modeling.sam.mask_decoder import MaskDecoder
-from sam2.modeling.sam.embedding_generator_old import EmbeddingGenerator
+from sam2.modeling.sam.embedding_generator_fusion import EmbeddingGenerator
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 from sam2.modeling.sam.embedding_generator import initialize_embedding_generator
@@ -391,7 +391,7 @@ class SAM2Base(torch.nn.Module):
         ) = self.sam_mask_decoder(
             image_embeddings=backbone_features,
             image_pe=self.embedding_generator.get_dense_pe(),
-            sparse_prompt_embeddings=sparse_embeddings,
+            sparse_prompt_embeddings=sparse_embeddings_gt,
             dense_prompt_embeddings=dense_embeddings,
             multimask_output=multimask_output,
             repeat_image=False,  # the image is already batched
@@ -402,10 +402,10 @@ class SAM2Base(torch.nn.Module):
 
         # Compute MSE loss for dense embeddings
         mse_dense = F.mse_loss(dense_embeddings, dense_embeddings_gt)
-        mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt)
+        # mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt)
 
         # Combine the losses (you can use a weighted sum if needed)
-        embedding_loss = mse_dense + mse_sparse * 5
+        embedding_loss = mse_dense
 
         if self.pred_obj_scores:  # predict if there is an object disappear in following frame
             is_obj_appearing = object_score_logits > 0
@@ -522,19 +522,18 @@ class SAM2Base(torch.nn.Module):
         Wrapper function for the FPNFeatureAdaptor.
         
         Args:
-            high_res_event_features (list): Input feature tensors 
-            from FPN levels
+            high_res_event_features (list): Input feature tensors from FPN levels.
         
         Returns:
-            list: Adapted event-like features
+            list: Adapted event-like features.
         """
         # Extract channel counts for each FPN level
         in_channels_list = [feat.shape[1] for feat in high_res_event_features]
         
         # Create adaptor with detected channel configurations
-        adaptor = FPNFeatureAdaptor(in_channels_list)
+        adaptor = FPNFeatureAdaptor(in_channels_list, use_residual=True)
         
-        # Move adaptor to the same device as input features
+        # Ensure the adaptor is on the same device as input features
         adaptor = adaptor.to(high_res_event_features[0].device)
         
         # Adapt features across all FPN levels
@@ -903,7 +902,6 @@ class SAM2Base(torch.nn.Module):
         high_res_event_features_adp = self._event_adaptor(high_res_event_features)
 
         
-
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
             # When use_mask_input_as_output_without_sam=True, we directly output the mask input
             # (see it as a GT mask) without using a SAM prompt encoder + mask decoder.

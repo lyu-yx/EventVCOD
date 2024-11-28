@@ -223,8 +223,8 @@ class EmbeddingGenerator(nn.Module):
             high_res_features: List[torch.Tensor],
             high_res_event_features: List[torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         # Multi-scale processing for backbone and event features
-        # backbone_multiscale = torch.sum(torch.stack([layer(backbone_features) for layer in self.backbone_processor]), dim=0)
-        # event_multiscale = torch.sum(torch.stack([layer(event_features) for layer in self.event_processor]), dim=0)
+        backbone_multiscale = torch.sum(torch.stack([layer(backbone_features) for layer in self.backbone_processor]), dim=0)
+        event_multiscale = torch.sum(torch.stack([layer(event_features) for layer in self.event_processor]), dim=0)
         
         # Learnable fusion of FPN features
         high_res_features_fpn = high_res_features + [backbone_features]
@@ -234,8 +234,8 @@ class EmbeddingGenerator(nn.Module):
         fpn_fusion_event_features = self.fpn_event_fusion(high_res_event_features_fpn)
         
         # Combine original and FPN features
-        combined_backbone = backbone_features + fpn_fusion_features
-        combined_event = event_features + fpn_fusion_event_features
+        combined_backbone = backbone_multiscale + fpn_fusion_features
+        combined_event = event_multiscale + fpn_fusion_event_features
         
         # Gated fusion: Control the contribution of event features
         # combined_features = torch.cat([combined_backbone, combined_event], dim=1)
