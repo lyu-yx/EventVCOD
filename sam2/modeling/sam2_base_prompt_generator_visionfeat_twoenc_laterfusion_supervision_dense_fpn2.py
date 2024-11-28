@@ -489,8 +489,9 @@ class SAM2Base(torch.nn.Module):
             )
         else:
             # produce an object pointer using the SAM decoder from the mask input
-            _, _, _, _, _, _, obj_ptr, _ = self._forward_sam_heads(
+            (_, _, _, _, _, obj_ptr, _), embedding_loss = self._forward_sam_heads(
                 backbone_features=backbone_features,
+                event_features=backbone_features_event,
                 mask_inputs=self.mask_downsample(mask_inputs_float),
                 high_res_features=high_res_features,
                 high_res_event_features=high_res_event_features,
@@ -515,7 +516,7 @@ class SAM2Base(torch.nn.Module):
             high_res_masks,
             obj_ptr,
             object_score_logits,
-        )
+        ), embedding_loss
     
     def _event_adaptor(self, high_res_event_features):
         """
@@ -911,10 +912,35 @@ class SAM2Base(torch.nn.Module):
             pix_feat_event = current_vision_feats_event[-1].permute(1, 2, 0)
             pix_feat_event = pix_feat_event.view(-1, self.hidden_dim, *feat_sizes[-1])
             pix_feat_event_adp = self._event_adaptor([pix_feat_event])
+
+            # print pix_feat size
+            # print('pix_feat sz', pix_feat.size)
+            # print('pix_feat_event sz', pix_feat_event.size)
+            # print('pix_feat_event_adp sz', pix_feat_event_adp.size)
+
             # pix_feat_event_adp = pix_feat_event_adp[0]
 
-            sam_outputs = self._use_mask_as_output(
-                pix_feat, pix_feat_event_adp, high_res_features, high_res_event_features_adp, mask_inputs
+            sam_outputs, embedding_loss = self._use_mask_as_output(
+                pix_feat, pix_feat_event_adp[0], high_res_features, high_res_event_features_adp, mask_inputs
+            )
+
+
+            current_vision_feats_event_adp = current_vision_feats_event[-1].permute(1, 2, 0)
+            current_vision_feats_event_adp = current_vision_feats_event_adp.view(-1, self.hidden_dim, *feat_sizes[-1])
+            current_vision_feats_event_adp = self._event_adaptor([current_vision_feats_event_adp])
+            current_vision_feats_event_adp = current_vision_feats_event_adp[0].permute(0, 2, 3, 1).reshape(-1, 1, 256)
+
+            pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
+                frame_idx=frame_idx,
+                is_init_cond_frame=is_init_cond_frame,
+                current_vision_feats=current_vision_feats[-1:],
+                current_vision_pos_embeds=current_vision_pos_embeds[-1:],
+                current_vision_feats_event=[current_vision_feats_event_adp],
+                current_vision_pos_embeds_event=current_vision_pos_embeds_event[-1:],
+                feat_sizes=feat_sizes[-1:],
+                output_dict=output_dict,
+                num_frames=num_frames,
+                track_in_reverse=track_in_reverse,
             )
         else:
             # fused the visual feature with previous memory features in the memory bank

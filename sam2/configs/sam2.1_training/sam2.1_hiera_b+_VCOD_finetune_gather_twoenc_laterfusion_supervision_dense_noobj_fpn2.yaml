@@ -327,7 +327,7 @@ trainer:
         loss_struc: 1
         loss_dice: 1
         loss_iou: 1
-        loss_class: 3
+        loss_class: 1
       supervise_all_iou: true
       iou_use_l1_loss: true
       pred_obj_scores: false

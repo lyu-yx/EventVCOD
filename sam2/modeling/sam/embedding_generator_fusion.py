@@ -156,21 +156,21 @@ class EmbeddingGenerator(nn.Module):
         self.activation = activation()
         
         # Multi-scale feature refinement for backbone and event features
-        # self.backbone_processor = nn.ModuleList([
-        #     nn.Sequential(
-        #         nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=rate, dilation=rate),
-        #         nn.BatchNorm2d(mask_in_chans),
-        #         activation()
-        #     ) for rate in [1, 2, 4, 8]
-        # ])
+        self.backbone_processor = nn.ModuleList([
+            nn.Sequential(
+                nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=rate, dilation=rate),
+                nn.BatchNorm2d(mask_in_chans),
+                activation()
+            ) for rate in [1, 2, 4, 8]
+        ])
         
-        # self.event_processor = nn.ModuleList([
-        #     nn.Sequential(
-        #         nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=rate, dilation=rate),
-        #         nn.BatchNorm2d(mask_in_chans),
-        #         activation()
-        #     ) for rate in [1, 2, 4, 8]
-        # ])
+        self.event_processor = nn.ModuleList([
+            nn.Sequential(
+                nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=rate, dilation=rate),
+                nn.BatchNorm2d(mask_in_chans),
+                activation()
+            ) for rate in [1, 2, 4, 8]
+        ])
         
         # Gated mechanism for controlling event feature contribution
         # self.gate = nn.Sequential(
