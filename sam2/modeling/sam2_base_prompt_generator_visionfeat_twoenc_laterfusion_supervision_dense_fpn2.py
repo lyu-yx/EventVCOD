@@ -12,7 +12,7 @@ from torch.nn.init import trunc_normal_
 
 
 from sam2.modeling.sam.mask_decoder import MaskDecoder
-from sam2.modeling.sam.embedding_generator_fusion import EmbeddingGenerator
+from sam2.modeling.sam.embedding_generator import EmbeddingGenerator
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 from sam2.modeling.sam.embedding_generator import initialize_embedding_generator
@@ -381,7 +381,7 @@ class SAM2Base(torch.nn.Module):
         )
 
         # sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features, event_features)# a) Handle point prompts
-        sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features, event_features, high_res_features, high_res_event_features)# a) Handle point prompts
+        sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features)# a) Handle point prompts
 
         (
             low_res_multimasks,
@@ -391,7 +391,7 @@ class SAM2Base(torch.nn.Module):
         ) = self.sam_mask_decoder(
             image_embeddings=backbone_features,
             image_pe=self.embedding_generator.get_dense_pe(),
-            sparse_prompt_embeddings=sparse_embeddings_gt,
+            sparse_prompt_embeddings=sparse_embeddings,
             dense_prompt_embeddings=dense_embeddings,
             multimask_output=multimask_output,
             repeat_image=False,  # the image is already batched
