@@ -9,7 +9,7 @@ scratch:
   base_lr: 3.0e-6
   vision_lr: 3.0e-06
   phases_per_epoch: 1
-  num_epochs: 200
+  num_epochs: 100
 
 dataset:
   multiplier: 1
@@ -248,10 +248,10 @@ trainer:
           transforms: ${vos.train_transforms}
           training: true
           video_dataset:
-            _target_: training.dataset.vos_raw_dataset.VCODDataset
-            img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
-            gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
-            eventflow_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train_event
+            _target_: training.dataset.vos_raw_dataset.VCODDatasetMoCA
+            img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
+            gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
+            eventflow_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/MoCA-Video-Train_event/
             # file_list_txt: None
             # ann_every: 4
           sampler:
@@ -360,7 +360,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_gather_twoenc_laterfusion_supervision_dense_noobj_fpn_chg_emb/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_visionfeat_dense_noobj_fpn_chg_emb_MoCA/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
