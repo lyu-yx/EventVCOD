@@ -203,6 +203,8 @@ def apply_rotary_enc(
         if xk.shape[-2] != 0
         else None
     )
+    # print(f"xq_ shape: {xq_.shape}, xk_ shape: {xk_.shape}")
+    # print(f"freqs_cis shape: {freqs_cis.shape}")
     freqs_cis = reshape_for_broadcast(freqs_cis, xq_)
     xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
     if xk_ is None:
@@ -211,6 +213,7 @@ def apply_rotary_enc(
     # repeat freqs along seq_len dim to match k seq_len
     if repeat_freqs_k:
         r = xk_.shape[-2] // xq_.shape[-2]
+        # r = max(1, xk_.shape[-2] // xq_.shape[-2])
         if freqs_cis.is_cuda:
             freqs_cis = freqs_cis.repeat(*([1] * (freqs_cis.ndim - 2)), r, 1)
         else:
@@ -218,4 +221,5 @@ def apply_rotary_enc(
             # (freqs_cis has 4 dims and we repeat on dim 2) so we use expand + flatten
             freqs_cis = freqs_cis.unsqueeze(2).expand(-1, -1, r, -1, -1).flatten(2, 3)
     xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
+    # assert xk_out.shape == xk.shape, f"xk_out shape mismatch: {xk_out.shape} != {xk.shape}"
     return xq_out.type_as(xq).to(xq.device), xk_out.type_as(xk).to(xk.device)

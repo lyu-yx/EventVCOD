@@ -313,12 +313,15 @@ class RoPEAttention(Attention):
     ) -> Tensor:
         # Input projections
         q = self.q_proj(q)
+        # print('k before projection:', k.shape)
         k = self.k_proj(k)
+        # print('k after projection:', k.shape)
         v = self.v_proj(v)
 
         # Separate into heads
         q = self._separate_heads(q, self.num_heads)
         k = self._separate_heads(k, self.num_heads)
+        # print('k sep head:', k.shape)
         v = self._separate_heads(v, self.num_heads)
 
         # Apply rotary position encoding
@@ -328,8 +331,11 @@ class RoPEAttention(Attention):
             self.freqs_cis = self.compute_cis(end_x=w, end_y=h).to(q.device)
         if q.shape[-2] != k.shape[-2]:
             assert self.rope_k_repeat
-
+        
         num_k_rope = k.size(-2) - num_k_exclude_rope
+        # print('num_k_rope:', num_k_rope)
+        # print('k[:, :, :num_k_rope]:', k[:, :, :num_k_rope].shape)
+        # print('q:', q.shape)
         q, k[:, :, :num_k_rope] = apply_rotary_enc(
             q,
             k[:, :, :num_k_rope],

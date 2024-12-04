@@ -12,12 +12,12 @@ from torch.nn.init import trunc_normal_
 
 
 from sam2.modeling.sam.mask_decoder import MaskDecoder
-from sam2.modeling.sam.embedding_generator_vis_event import EmbeddingGenerator
+from sam2.modeling.sam.embedding_generator_spase_opt import EmbeddingGenerator
+from sam2.modeling.sam.embedding_generator_spase_opt import initialize_embedding_generator
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
-from sam2.modeling.sam.embedding_generator import initialize_embedding_generator
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
-from sam2.modeling.sam.event_adaptor_complex import event_adaptor
+from sam2.modeling.sam.event_adaptor_complex import event_adaptor, vis_adaptor
 # from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
 # a large negative value as a placeholder score for missing objects
@@ -156,8 +156,15 @@ class SAM2Base(torch.nn.Module):
         # a single token to indicate no memory embedding from previous frames
         self.no_mem_embed = torch.nn.Parameter(torch.zeros(1, 1, self.hidden_dim))
         self.no_mem_pos_enc = torch.nn.Parameter(torch.zeros(1, 1, self.hidden_dim))
+
+        # self.no_mem_to_cat_memory = torch.nn.Parameter(torch.zeros(1, 1, self.mem_dim))
+        # self.no_mem_to_cat_memory_pos_enc = torch.nn.Parameter(torch.zeros(1, 1, self.mem_dim))
+
         trunc_normal_(self.no_mem_embed, std=0.02)
         trunc_normal_(self.no_mem_pos_enc, std=0.02)
+        # trunc_normal_(self.no_mem_to_cat_memory, std=0.02)
+        # trunc_normal_(self.no_mem_to_cat_memory_pos_enc, std=0.02)
+
         self.directly_add_no_mem_embed = directly_add_no_mem_embed
         # Apply sigmoid to the output raw mask logits (to turn them from
         # range (-inf, +inf) to range (0, 1)) before feeding them into the memory encoder
@@ -754,17 +761,28 @@ class SAM2Base(torch.nn.Module):
             # print('self.no_mem_pos_enc.shape', self.no_mem_pos_enc.shape)
             # print('self.mem_dim', self.mem_dim)
             
-            # to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim)]
-            # to_cat_memory_pos_embed = [self.no_mem_pos_enc.expand(1, B, self.mem_dim)]
             to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim)]
             to_cat_memory_pos_embed = [self.no_mem_pos_enc.expand(1, B, self.mem_dim)]
 
 
+            # to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim)]
+            # to_cat_memory_pos_embed = [self.no_mem_pos_enc.expand(1, B, self.mem_dim)]
+
+            # to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim, 256)]
+            # to_cat_memory_pos_embed = [self.no_mem_pos_enc.expand(1, B, self.mem_dim, 256)]
+
+            # to_cat_memory = [self.no_mem_to_cat_memory.expand(1, B, self.mem_dim)]
+            # to_cat_memory_pos_embed = [self.no_mem_to_cat_memory_pos_enc.expand(1, B, self.mem_dim)]
+
+        
         # Step 2: Concatenate the memories and forward through the transformer encoder
         memory = torch.cat(to_cat_memory, dim=0)
         memory_pos_embed = torch.cat(to_cat_memory_pos_embed, dim=0)
         
-        
+        # print('memory.shape', memory.shape)
+        # print('current_vision_feats[0].shape', current_vision_feats[0].shape)
+       
+
         pix_feat_with_mem = self.memory_attention(
             curr=current_vision_feats,
             curr_pos=current_vision_pos_embeds,
@@ -876,53 +894,57 @@ class SAM2Base(torch.nn.Module):
         # len high_res_event_features[1] torch.Size([1, 64, 128, 128])
         
         high_res_event_features_adp = event_adaptor(high_res_event_features)
-
+        high_res_features_adp = vis_adaptor(high_res_features)
         
+        pix_feat = current_vision_feats[-1].permute(1, 2, 0)
+        pix_feat = pix_feat.view(-1, self.hidden_dim, *feat_sizes[-1])
+        pix_feat_adp = vis_adaptor(pix_feat)
+
+        pix_feat_event = current_vision_feats_event[-1].permute(1, 2, 0)
+        pix_feat_event = pix_feat_event.view(-1, self.hidden_dim, *feat_sizes[-1])
+        pix_feat_event_adp = event_adaptor(pix_feat_event)
+
+        # print pix_feat size
+        # print('pix_feat sz', pix_feat.size)
+        # print('pix_feat_event sz', pix_feat_event.size)
+        # print('pix_feat_event_adp sz', pix_feat_event_adp.size)
+
+        # pix_feat_event_adp = pix_feat_event_adp[0]
+
+        pix_feat_adp = pix_feat_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
+        pix_feat_event_adp = pix_feat_event_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
+
+
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
             # When use_mask_input_as_output_without_sam=True, we directly output the mask input
             # (see it as a GT mask) without using a SAM prompt encoder + mask decoder.
-            pix_feat = current_vision_feats[-1].permute(1, 2, 0)
-            pix_feat = pix_feat.view(-1, self.hidden_dim, *feat_sizes[-1])
+            
 
-            pix_feat_event = current_vision_feats_event[-1].permute(1, 2, 0)
-            pix_feat_event = pix_feat_event.view(-1, self.hidden_dim, *feat_sizes[-1])
-            pix_feat_event_adp = event_adaptor(pix_feat_event)
-
-            # print pix_feat size
-            # print('pix_feat sz', pix_feat.size)
-            # print('pix_feat_event sz', pix_feat_event.size)
-            # print('pix_feat_event_adp sz', pix_feat_event_adp.size)
-
-            # pix_feat_event_adp = pix_feat_event_adp[0]
+            pix_feat_short_long = pix_feat_event_adp
+            # pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
+            #     frame_idx=frame_idx,
+            #     is_init_cond_frame=is_init_cond_frame,
+            #     current_vision_feats=[pix_feat_adp],
+            #     current_vision_pos_embeds=current_vision_pos_embeds[-1:],
+            #     current_vision_feats_event=[pix_feat_event_adp],
+            #     current_vision_pos_embeds_event=current_vision_pos_embeds_event[-1:],
+            #     feat_sizes=feat_sizes[-1:],
+            #     output_dict=output_dict,
+            #     num_frames=num_frames,
+            #     track_in_reverse=track_in_reverse,
+            # )
 
             sam_outputs, embedding_loss = self._use_mask_as_output(
-                pix_feat, pix_feat_event_adp, high_res_features, high_res_event_features_adp, mask_inputs
+                pix_feat_adp, pix_feat_event_adp, high_res_features_adp, high_res_event_features_adp, mask_inputs
             )
 
-            current_vision_feats_event_adp = current_vision_feats_event[-1].permute(1, 2, 0)
-            current_vision_feats_event_adp = current_vision_feats_event_adp.view(-1, self.hidden_dim, *feat_sizes[-1])
-            current_vision_feats_event_adp = event_adaptor([current_vision_feats_event_adp])
-            current_vision_feats_event_adp = current_vision_feats_event_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
-
-            pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
-                frame_idx=frame_idx,
-                is_init_cond_frame=is_init_cond_frame,
-                current_vision_feats=current_vision_feats[-1:],
-                current_vision_pos_embeds=current_vision_pos_embeds[-1:],
-                current_vision_feats_event=[current_vision_feats_event_adp],
-                current_vision_pos_embeds_event=current_vision_pos_embeds_event[-1:],
-                feat_sizes=feat_sizes[-1:],
-                output_dict=output_dict,
-                num_frames=num_frames,
-                track_in_reverse=track_in_reverse,
-            )
         else:
             # fused the visual feature with previous memory features in the memory bank
-            current_vision_feats_event_adp = current_vision_feats_event[-1].permute(1, 2, 0)
-            current_vision_feats_event_adp = current_vision_feats_event_adp.view(-1, self.hidden_dim, *feat_sizes[-1])
-            current_vision_feats_event_adp = event_adaptor(current_vision_feats_event_adp)
-            current_vision_feats_event_adp = current_vision_feats_event_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
-
+            # current_vision_feats_event_adp = current_vision_feats_event[-1].permute(1, 2, 0)
+            # current_vision_feats_event_adp = current_vision_feats_event_adp.view(-1, self.hidden_dim, *feat_sizes[-1])
+            # current_vision_feats_event_adp = event_adaptor(current_vision_feats_event_adp)
+            # current_vision_feats_event_adp = current_vision_feats_event_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
+           
             # print('len current_vision_feats_event_adp', len(current_vision_feats_event_adp))
             # print('current_vision_feats_event_adp', current_vision_feats_event_adp.size())
             
@@ -935,9 +957,9 @@ class SAM2Base(torch.nn.Module):
             pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
                 frame_idx=frame_idx,
                 is_init_cond_frame=is_init_cond_frame,
-                current_vision_feats=current_vision_feats[-1:],
+                current_vision_feats=[pix_feat_adp],
                 current_vision_pos_embeds=current_vision_pos_embeds[-1:],
-                current_vision_feats_event=[current_vision_feats_event_adp],
+                current_vision_feats_event=[pix_feat_event_adp],
                 current_vision_pos_embeds_event=current_vision_pos_embeds_event[-1:],
                 feat_sizes=feat_sizes[-1:],
                 output_dict=output_dict,
@@ -964,12 +986,12 @@ class SAM2Base(torch.nn.Module):
                 event_features=pix_feat_short_long,
                 point_inputs=point_inputs,
                 mask_inputs=mask_inputs,
-                high_res_features=high_res_features,
+                high_res_features=high_res_features_adp,
                 high_res_event_features=high_res_event_features_adp,
                 multimask_output=multimask_output,
             )
 
-        return current_out, sam_outputs, high_res_features, pix_feat, pix_feat_short_long, embedding_loss
+        return current_out, sam_outputs, high_res_features_adp, pix_feat_adp, pix_feat_short_long, embedding_loss
 
     def _encode_memory_in_output(
         self,

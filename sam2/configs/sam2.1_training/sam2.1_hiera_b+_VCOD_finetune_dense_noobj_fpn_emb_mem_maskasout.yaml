@@ -178,9 +178,9 @@ trainer:
     # apply scaled sigmoid on mask logits for memory encoder, and directly feed input mask as output mask
     sigmoid_scale_for_mem_enc: 20.0
     sigmoid_bias_for_mem_enc: -10.0
-    use_mask_input_as_output_without_sam: false
+    use_mask_input_as_output_without_sam: true
     # Memory
-    directly_add_no_mem_embed: false
+    directly_add_no_mem_embed: true
     no_obj_embed_spatial: true
     # use high-resolution feature map in the SAM mask decoder
     use_high_res_features_in_sam: true
@@ -209,9 +209,9 @@ trainer:
 
     ####### Training specific params #######
     # box/point input and corrections
-    prob_to_use_pt_input_for_train: 0.0
+    prob_to_use_pt_input_for_train: 0.5
     prob_to_use_pt_input_for_eval: 0.0
-    prob_to_use_box_input_for_train: 0.0  # 0.5*0.5 = 0.25 prob to use box instead of points
+    prob_to_use_box_input_for_train: 0.5  # 0.5*0.5 = 0.25 prob to use box instead of points
     prob_to_use_box_input_for_eval: 0.0
     prob_to_sample_from_gt_for_train: 0  # with a small prob, sampling correction points from GT mask instead of prediction errors
     num_frames_to_correct_for_train: 2  # iteratively sample on random 1~2 frames (always include the first frame)
@@ -226,9 +226,9 @@ trainer:
     
 
     freeze_image_encoder: True
-    freeze_mask_decoder: True
+    freeze_mask_decoder: False
     freeze_embedding_generator: False
-    freeze_memory_attention: True
+    freeze_memory_attention: False
     freeze_memory_encoder: True
 
     
@@ -360,7 +360,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:

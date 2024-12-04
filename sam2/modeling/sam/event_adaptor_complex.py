@@ -129,3 +129,29 @@ def event_adaptor(event_data):
             use_residual=True
         ).to(event_data.device)
         return adaptor(event_data)
+    
+
+def vis_adaptor(vis_data):
+    """
+    Wrapper function for feature adaptation.
+    
+    Args:
+        event_data (Union[torch.Tensor, list]): Either a single tensor or list of FPN features
+        
+    Returns:
+        Union[torch.Tensor, list]: Adapted features maintaining input dimensions
+    """
+    # Handle both single tensor and list of features
+    if isinstance(vis_data, list):
+        in_channels_list = [feat.shape[1] for feat in vis_data]
+        adaptor = MultiLevelEventAdaptor(
+            in_channels_list=in_channels_list,
+            use_residual=True
+        ).to(vis_data[0].device)
+        return adaptor(vis_data)
+    else:
+        adaptor = EventAdaptor(
+            feature_channels=vis_data.shape[1],
+            use_residual=True
+        ).to(vis_data.device)
+        return adaptor(vis_data)
