@@ -350,6 +350,7 @@ class SAM2Base(torch.nn.Module):
         assert backbone_features.size(1) == self.sam_prompt_embed_dim
         assert backbone_features.size(2) == self.sam_image_embedding_size
         assert backbone_features.size(3) == self.sam_image_embedding_size
+
         
         if point_inputs is not None:
             sam_point_coords = point_inputs["point_coords"]
@@ -388,6 +389,10 @@ class SAM2Base(torch.nn.Module):
         )
 
         # sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features, event_features)# a) Handle point prompts
+        # print('len high_res_features', len(high_res_features))
+        # print('len high_res_event_features', len(high_res_event_features))
+        # print('high_res_features', high_res_features[0].shape)
+        # print('high_res_event_features', high_res_event_features[0].shape)
         sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features, event_features, high_res_features, high_res_event_features)# a) Handle point prompts
 
         (
@@ -409,7 +414,9 @@ class SAM2Base(torch.nn.Module):
 
         # Compute MSE loss for dense embeddings
         mse_dense = F.mse_loss(dense_embeddings, dense_embeddings_gt)
-        mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt)
+        # print('sparse_embeddings', sparse_embeddings.shape)
+        # print('sparse_embeddings_gt', sparse_embeddings_gt.shape)
+        mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt[:,-1:,:])
 
         # Combine the losses (you can use a weighted sum if needed)
         embedding_loss = mse_dense + 5 * mse_sparse
@@ -496,6 +503,8 @@ class SAM2Base(torch.nn.Module):
             )
         else:
             # produce an object pointer using the SAM decoder from the mask input
+            # print('in _use_mask_as_output')
+            # print('backbone_features', backbone_features.shape)
             (_, _, _, _, _, obj_ptr, _), embedding_loss = self._forward_sam_heads(
                 backbone_features=backbone_features,
                 event_features=backbone_features_event,
@@ -911,10 +920,7 @@ class SAM2Base(torch.nn.Module):
 
         # pix_feat_event_adp = pix_feat_event_adp[0]
 
-        pix_feat_adp = pix_feat_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
-        pix_feat_event_adp = pix_feat_event_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
-
-
+        
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
             # When use_mask_input_as_output_without_sam=True, we directly output the mask input
             # (see it as a GT mask) without using a SAM prompt encoder + mask decoder.
@@ -953,13 +959,15 @@ class SAM2Base(torch.nn.Module):
 
             # print('len current_vision_pos_embeds', len(current_vision_pos_embeds[-1:]))
             # print('len current_vision_pos_embeds', current_vision_pos_embeds[-1:][0].size())
+            pix_feat_vit_adp = pix_feat_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
+            pix_feat_event_vit_adp = pix_feat_event_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
 
             pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
                 frame_idx=frame_idx,
                 is_init_cond_frame=is_init_cond_frame,
-                current_vision_feats=[pix_feat_adp],
+                current_vision_feats=[pix_feat_vit_adp],
                 current_vision_pos_embeds=current_vision_pos_embeds[-1:],
-                current_vision_feats_event=[pix_feat_event_adp],
+                current_vision_feats_event=[pix_feat_event_vit_adp],
                 current_vision_pos_embeds_event=current_vision_pos_embeds_event[-1:],
                 feat_sizes=feat_sizes[-1:],
                 output_dict=output_dict,
@@ -991,7 +999,7 @@ class SAM2Base(torch.nn.Module):
                 multimask_output=multimask_output,
             )
 
-        return current_out, sam_outputs, high_res_features_adp, pix_feat_adp, pix_feat_short_long, embedding_loss
+        return current_out, sam_outputs, high_res_features_adp, high_res_event_features_adp, pix_feat_adp, pix_feat_short_long, embedding_loss
 
     def _encode_memory_in_output(
         self,
@@ -1041,7 +1049,7 @@ class SAM2Base(torch.nn.Module):
         # The previously predicted SAM mask logits (which can be fed together with new clicks in demo).
         prev_sam_mask_logits=None,
     ):
-        current_out, sam_outputs, _, _, _, _ = self._track_step(
+        current_out, sam_outputs, _, _, _, _, _ = self._track_step(
             frame_idx,
             is_init_cond_frame,
             current_vision_feats,

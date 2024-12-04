@@ -178,7 +178,7 @@ class PromptEncoder(nn.Module):
             print('use masks')
             dense_embeddings = self._embed_masks(masks)
         else:
-            [print('no masks')]
+            print('no masks')
             dense_embeddings = self.no_mask_embed.weight.reshape(1, -1, 1, 1).expand(
                 bs, -1, self.image_embedding_size[0], self.image_embedding_size[1]
             )

@@ -72,17 +72,12 @@ class EmbeddingGenerator(nn.Module):
             nn.Conv2d(mask_in_chans, embed_dim, kernel_size=1)
         )
         
-        self.sparse_embedder1 = nn.Sequential(
+        self.sparse_embedder = nn.Sequential(
             PyramidPooling(mask_in_chans),
             nn.Conv2d(mask_in_chans * 5, embed_dim, kernel_size=1),
             nn.AdaptiveAvgPool2d(1)
         )
 
-        self.sparse_embedder2 = nn.Sequential(
-            PyramidPooling(mask_in_chans),
-            nn.Conv2d(mask_in_chans * 5, embed_dim, kernel_size=1),
-            nn.AdaptiveAvgPool2d(1)
-        )
         
         # Renamed from edge_detector to better reflect its purpose
         self.region_attention = nn.Sequential(
@@ -162,15 +157,11 @@ class EmbeddingGenerator(nn.Module):
         dense_embeddings = self.dense_embedder(features)
         dense_embeddings = self.refinement(torch.cat([dense_embeddings, region_attention], dim=1))
         
-        sparse_embeddings1 = self.sparse_embedder1(features)  # [B, embed_dim, H, W]
-        sparse_embeddings2 = self.sparse_embedder2(features)  # [B, embed_dim, H, W]
+        # Reshape to [B, 1, 256]
+        sparse_embeddings = self.sparse_embedder(features)  # [B, 256, 1, 1]
+        sparse_embeddings = sparse_embeddings.view(-1, 1, 256)
 
-        # Concatenate along the channel dimension
-        sparse_embeddings = torch.cat([sparse_embeddings1, sparse_embeddings2], dim=1)  # [B, 2*embed_dim, H, W]
-
-        # Flatten and transpose to get [B, sequence_length, 2*embed_dim]
-        sparse_embeddings = sparse_embeddings.flatten(2).transpose(1, 2)
-        
+        # print(sparse_embeddings.shape)
         return sparse_embeddings, dense_embeddings
 
     def get_dense_pe(self) -> torch.Tensor:

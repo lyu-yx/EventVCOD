@@ -430,7 +430,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
     ):
         if frames_to_add_correction_pt is None:
             frames_to_add_correction_pt = []
-        current_out, sam_outputs, high_res_features, pix_feat, event_feat, embedding_loss = self._track_step(
+        current_out, sam_outputs, high_res_features, high_res_event_features, pix_feat, event_feat, embedding_loss = self._track_step(
             frame_idx,
             is_init_cond_frame,
             current_vision_feats,
@@ -466,11 +466,17 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
 
         # Optionally, sample correction points iteratively to correct the mask
         if frame_idx in frames_to_add_correction_pt:
+            # print("Iteratively sampling correction points")
+            # print('pix_feat', pix_feat.shape)
+            # print('len high_res_features', len(high_res_features))
+            # print('high_res_features[0]', high_res_features[0].shape)
+            # print('high_res_features[1]', high_res_features[1].shape)
             point_inputs, final_sam_outputs = self._iter_correct_pt_sampling(
                 is_init_cond_frame,
                 point_inputs,
                 gt_masks,
                 high_res_features,
+                high_res_event_features,
                 pix_feat,
                 event_feat,
                 low_res_multimasks,
@@ -515,6 +521,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         point_inputs,
         gt_masks,
         high_res_features,
+        high_res_event_features,
         pix_feat_with_mem,
         event_feat_with_mem,
         low_res_multimasks,
@@ -564,6 +571,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                     point_inputs=point_inputs,
                     mask_inputs=mask_inputs,
                     high_res_features=high_res_features,
+                    high_res_event_features=high_res_event_features,
                     multimask_output=multimask_output,
                     use_reentrant=False,
                 )
@@ -574,6 +582,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                     point_inputs=point_inputs,
                     mask_inputs=mask_inputs,
                     high_res_features=high_res_features,
+                    high_res_event_features=high_res_event_features,
                     multimask_output=multimask_output,
                 )
             (
