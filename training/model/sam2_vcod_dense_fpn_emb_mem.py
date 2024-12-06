@@ -71,6 +71,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         freeze_embedding_generator=False,
         freeze_memory_attention=False,
         freeze_memory_encoder=False,
+        freeze_prompt_encoder=False,
         **kwargs,
     ):
         super().__init__(image_encoder, short_long_relation_attention, memory_attention, memory_encoder, **kwargs)
@@ -123,6 +124,10 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         
         if freeze_memory_encoder:
             for p in self.memory_encoder.parameters():
+                p.requires_grad = False
+        
+        if freeze_prompt_encoder:
+            for p in self.sam_prompt_encoder.parameters():
                 p.requires_grad = False
 
     def forward(self, input: BatchedVideoDatapoint):

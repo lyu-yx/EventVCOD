@@ -12,12 +12,12 @@ from torch.nn.init import trunc_normal_
 
 
 from sam2.modeling.sam.mask_decoder import MaskDecoder
-from sam2.modeling.sam.embedding_generator_spase_opt import EmbeddingGenerator
-from sam2.modeling.sam.embedding_generator_spase_opt import initialize_embedding_generator
+from sam2.modeling.sam.embedding_generator_vis_event_o1 import EmbeddingGenerator
+from sam2.modeling.sam.embedding_generator_vis_event_o1 import initialize_embedding_generator
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
-from sam2.modeling.sam.event_adaptor_complex import event_adaptor, vis_adaptor
+from sam2.modeling.sam.event_adaptor_complex import MultiLevelEventAdaptor, EventAdaptor
 # from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
 # a large negative value as a placeholder score for missing objects
@@ -259,6 +259,12 @@ class SAM2Base(torch.nn.Module):
             input_image_size=(self.image_size, self.image_size),
             mask_in_chans=self.hidden_dim,
         )
+
+        self.high_res_event_features_adp=MultiLevelEventAdaptor(in_channels_list=[32, 64], use_residual=True) # high res feat channel
+        self.high_res_features_adp = MultiLevelEventAdaptor(in_channels_list=[32, 64], use_residual=True) # high res feat channel
+        
+        self.pix_feat_adp = EventAdaptor(256, use_residual=True)
+        self.pix_feat_event_adp = EventAdaptor(256, use_residual=True)
 
         self.embedding_generator.apply(initialize_embedding_generator)
         
@@ -902,16 +908,16 @@ class SAM2Base(torch.nn.Module):
         # len high_res_event_features[0] torch.Size([1, 32, 256, 256])
         # len high_res_event_features[1] torch.Size([1, 64, 128, 128])
         
-        high_res_event_features_adp = event_adaptor(high_res_event_features)
-        high_res_features_adp = vis_adaptor(high_res_features)
+        high_res_event_features_adp = self.high_res_event_features_adp(high_res_event_features)
+        high_res_features_adp = self.high_res_features_adp(high_res_features)
         
         pix_feat = current_vision_feats[-1].permute(1, 2, 0)
         pix_feat = pix_feat.view(-1, self.hidden_dim, *feat_sizes[-1])
-        pix_feat_adp = vis_adaptor(pix_feat)
+        pix_feat_adp = self.pix_feat_adp(pix_feat)
 
         pix_feat_event = current_vision_feats_event[-1].permute(1, 2, 0)
         pix_feat_event = pix_feat_event.view(-1, self.hidden_dim, *feat_sizes[-1])
-        pix_feat_event_adp = event_adaptor(pix_feat_event)
+        pix_feat_event_adp = self.pix_feat_event_adp(pix_feat_event)
 
         # print pix_feat size
         # print('pix_feat sz', pix_feat.size)
@@ -975,12 +981,6 @@ class SAM2Base(torch.nn.Module):
                 track_in_reverse=track_in_reverse,
             )
 
-            # feats fusion
-            # print pix_feat and pix_feat_short_long shape
-            # print('pix_feat sz', pix_feat.size)
-            # print('pix_feat_short_long sz', pix_feat_short_long.size)
-
-            
             # apply SAM-style segmentation head
             # here we might feed previously predicted low-res SAM mask logits into the SAM mask decoder,
             # e.g. in demo where such logits come from earlier interaction instead of correction sampling

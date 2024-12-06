@@ -165,20 +165,6 @@ class EmbeddingGenerator(nn.Module):
         return self.pe_layer(self.image_embedding_size).unsqueeze(0)
 
 
-def initialize_embedding_generator(module):
-    if isinstance(module, nn.Conv2d):
-        nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
-        if module.bias is not None:  # Check if bias exists
-            nn.init.constant_(module.bias, 0)
-    elif isinstance(module, nn.Linear):
-        nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
-        if module.bias is not None:  # Check if bias exists
-            nn.init.constant_(module.bias, 0)
-    elif isinstance(module, nn.BatchNorm2d):
-        nn.init.constant_(module.weight, 1)
-        if module.bias is not None:  # Check if bias exists
-            nn.init.constant_(module.bias, 0)
-
 
 class MultiResolutionFusion(nn.Module):
     def __init__(self, target_channels: int):
@@ -362,3 +348,16 @@ class PyramidPooling(nn.Module):
     
 
     
+def initialize_embedding_generator(module):
+    if isinstance(module, nn.Conv2d):
+        nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+        if module.bias is not None:  # Check if bias exists
+            nn.init.constant_(module.bias, 0)
+    elif isinstance(module, nn.Linear):
+        nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+        if module.bias is not None:  # Check if bias exists
+            nn.init.constant_(module.bias, 0)
+    elif isinstance(module, nn.BatchNorm2d):
+        nn.init.constant_(module.weight, 1)
+        if module.bias is not None:  # Check if bias exists
+            nn.init.constant_(module.bias, 0)

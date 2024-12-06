@@ -9,7 +9,7 @@ scratch:
   base_lr: 3.0e-6
   vision_lr: 3.0e-06
   phases_per_epoch: 1
-  num_epochs: 200
+  num_epochs: 100
 
 dataset:
   multiplier: 1
@@ -230,6 +230,7 @@ trainer:
     freeze_embedding_generator: False
     freeze_memory_attention: False
     freeze_memory_encoder: True
+    freeze_prompt_encoder: True
 
     
     num_init_cond_frames_for_eval: 1  # only mask on the first frame
@@ -344,7 +345,7 @@ trainer:
   # initialize from a SAM 2 checkpoint
   checkpoint:
     save_dir: ${launcher.experiment_log_dir}/checkpoints
-    save_freq: 5 # 0 only last checkpoint is saved.
+    save_freq: 2 # 0 only last checkpoint is saved.
     model_weight_initializer:
       _partial_: True
       _target_: training.utils.checkpoint_utils.load_state_dict_into_model
