@@ -61,7 +61,7 @@ class PyramidPooling(nn.Module):
             nn.Sequential(
                 nn.AdaptiveAvgPool2d(ps),
                 nn.Conv2d(in_channels, in_channels, kernel_size=1, bias=False),
-                nn.BatchNorm2d(in_channels),
+                nn.GroupNorm(num_groups=32, num_channels=in_channels),  # Replacing BatchNorm2d
                 nn.ReLU(inplace=True)
             ) for ps in pool_sizes
         ])
@@ -285,6 +285,7 @@ class EmbeddingGenerator(nn.Module):
         dense_embeddings = self.refinement(torch.cat([dense_embeddings, region_attention], dim=1))
         
         # Sparse embeddings
+        print('features.shape', features.shape)
         sparse_embeddings = self.sparse_embedder(features)
         sparse_embeddings = sparse_embeddings.flatten(2).transpose(1, 2)
         
