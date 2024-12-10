@@ -209,9 +209,9 @@ trainer:
 
     ####### Training specific params #######
     # box/point input and corrections
-    prob_to_use_pt_input_for_train: 0.5
+    prob_to_use_pt_input_for_train: 0.0
     prob_to_use_pt_input_for_eval: 0.0
-    prob_to_use_box_input_for_train: 0.5  # 0.5*0.5 = 0.25 prob to use box instead of points
+    prob_to_use_box_input_for_train: 0.0  # 0.5*0.5 = 0.25 prob to use box instead of points
     prob_to_use_box_input_for_eval: 0.0
     prob_to_sample_from_gt_for_train: 0  # with a small prob, sampling correction points from GT mask instead of prediction errors
     num_frames_to_correct_for_train: 2  # iteratively sample on random 1~2 frames (always include the first frame)
@@ -226,10 +226,11 @@ trainer:
     
 
     freeze_image_encoder: True
-    freeze_mask_decoder: False
+    freeze_mask_decoder: True
     freeze_embedding_generator: False
     freeze_memory_attention: False
     freeze_memory_encoder: True
+    freeze_prompt_encoder: True
 
     
     num_init_cond_frames_for_eval: 1  # only mask on the first frame

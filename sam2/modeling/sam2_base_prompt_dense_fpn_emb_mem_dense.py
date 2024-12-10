@@ -356,7 +356,6 @@ class SAM2Base(torch.nn.Module):
         assert backbone_features.size(1) == self.sam_prompt_embed_dim
         assert backbone_features.size(2) == self.sam_image_embedding_size
         assert backbone_features.size(3) == self.sam_image_embedding_size
-
         
         if point_inputs is not None:
             sam_point_coords = point_inputs["point_coords"]
@@ -919,13 +918,6 @@ class SAM2Base(torch.nn.Module):
         pix_feat_event = pix_feat_event.view(-1, self.hidden_dim, *feat_sizes[-1])
         pix_feat_event_adp = self.pix_feat_event_adp(pix_feat_event)
 
-        # print pix_feat size
-        # print('pix_feat sz', pix_feat.size)
-        # print('pix_feat_event sz', pix_feat_event.size)
-        # print('pix_feat_event_adp sz', pix_feat_event_adp.size)
-
-        # pix_feat_event_adp = pix_feat_event_adp[0]
-
         
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
             # When use_mask_input_as_output_without_sam=True, we directly output the mask input
@@ -933,39 +925,14 @@ class SAM2Base(torch.nn.Module):
             
 
             pix_feat_short_long = pix_feat_event_adp
-            # pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
-            #     frame_idx=frame_idx,
-            #     is_init_cond_frame=is_init_cond_frame,
-            #     current_vision_feats=[pix_feat_adp],
-            #     current_vision_pos_embeds=current_vision_pos_embeds[-1:],
-            #     current_vision_feats_event=[pix_feat_event_adp],
-            #     current_vision_pos_embeds_event=current_vision_pos_embeds_event[-1:],
-            #     feat_sizes=feat_sizes[-1:],
-            #     output_dict=output_dict,
-            #     num_frames=num_frames,
-            #     track_in_reverse=track_in_reverse,
-            # )
-
+            
             sam_outputs, embedding_loss = self._use_mask_as_output(
                 pix_feat_adp, pix_feat_event_adp, high_res_features_adp, high_res_event_features_adp, mask_inputs
             )
 
         else:
-            # fused the visual feature with previous memory features in the memory bank
-            # current_vision_feats_event_adp = current_vision_feats_event[-1].permute(1, 2, 0)
-            # current_vision_feats_event_adp = current_vision_feats_event_adp.view(-1, self.hidden_dim, *feat_sizes[-1])
-            # current_vision_feats_event_adp = event_adaptor(current_vision_feats_event_adp)
-            # current_vision_feats_event_adp = current_vision_feats_event_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
-           
-            # print('len current_vision_feats_event_adp', len(current_vision_feats_event_adp))
-            # print('current_vision_feats_event_adp', current_vision_feats_event_adp.size())
             
-            # print('len current_vision_feats', len(current_vision_feats[-1:]))
-            # print('len current_vision_feats', current_vision_feats[-1:][0].size())
-
-            # print('len current_vision_pos_embeds', len(current_vision_pos_embeds[-1:]))
-            # print('len current_vision_pos_embeds', current_vision_pos_embeds[-1:][0].size())
-            pix_feat_vit_adp = pix_feat_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
+            pix_feat_vit_adp = pix_feat.permute(0, 2, 3, 1).reshape(-1, 1, 256)
             pix_feat_event_vit_adp = pix_feat_event_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
 
             pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
@@ -994,12 +961,12 @@ class SAM2Base(torch.nn.Module):
                 event_features=pix_feat_short_long,
                 point_inputs=point_inputs,
                 mask_inputs=mask_inputs,
-                high_res_features=high_res_features_adp,
+                high_res_features=high_res_features,
                 high_res_event_features=high_res_event_features_adp,
                 multimask_output=multimask_output,
             )
 
-        return current_out, sam_outputs, high_res_features_adp, high_res_event_features_adp, pix_feat_adp, pix_feat_short_long, embedding_loss
+        return current_out, sam_outputs, high_res_features, high_res_event_features_adp, pix_feat, pix_feat_short_long, embedding_loss
 
     def _encode_memory_in_output(
         self,

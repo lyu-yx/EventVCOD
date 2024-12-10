@@ -178,7 +178,7 @@ trainer:
     # apply scaled sigmoid on mask logits for memory encoder, and directly feed input mask as output mask
     sigmoid_scale_for_mem_enc: 20.0
     sigmoid_bias_for_mem_enc: -10.0
-    use_mask_input_as_output_without_sam: true
+    use_mask_input_as_output_without_sam: false
     # Memory
     directly_add_no_mem_embed: true
     no_obj_embed_spatial: true
@@ -226,9 +226,9 @@ trainer:
     
 
     freeze_image_encoder: True
-    freeze_mask_decoder: False
+    freeze_mask_decoder: True
     freeze_embedding_generator: False
-    freeze_memory_attention: False
+    freeze_memory_attention: True
     freeze_memory_encoder: True
     freeze_prompt_encoder: True
 
@@ -345,7 +345,7 @@ trainer:
   # initialize from a SAM 2 checkpoint
   checkpoint:
     save_dir: ${launcher.experiment_log_dir}/checkpoints
-    save_freq: 2 # 0 only last checkpoint is saved.
+    save_freq: 5 # 0 only last checkpoint is saved.
     model_weight_initializer:
       _partial_: True
       _target_: training.utils.checkpoint_utils.load_state_dict_into_model
