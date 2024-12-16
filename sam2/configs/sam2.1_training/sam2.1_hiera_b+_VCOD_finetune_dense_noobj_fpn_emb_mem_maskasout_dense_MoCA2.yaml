@@ -6,10 +6,10 @@ scratch:
   num_train_workers: 8
   num_frames: 8
   max_num_objects: 1
-  base_lr: 3.0e-6
-  vision_lr: 3.0e-06
+  base_lr: 3.0e-7
+  vision_lr: 3.0e-7
   phases_per_epoch: 1
-  num_epochs: 400
+  num_epochs: 300
 
 dataset:
   multiplier: 1
@@ -144,7 +144,7 @@ trainer:
           downsample_rate: 1
           dropout: 0.1
           kv_in_dim: 64
-      num_layers: 2
+      num_layers: 4
 
     memory_encoder:
       _target_: sam2.modeling.memory_encoder.MemoryEncoder
@@ -249,10 +249,10 @@ trainer:
           transforms: ${vos.train_transforms}
           training: true
           video_dataset:
-            _target_: training.dataset.vos_raw_dataset.VCODDataset
-            img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
-            gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train
-            eventflow_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask-Pseudo/MoCA-Video-Train_event
+            _target_: training.dataset.vos_raw_dataset.VCODDatasetMoCA
+            img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
+            gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
+            eventflow_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/MoCA-Video-Train_event/
             # file_list_txt: None
             # ann_every: 4
           sampler:
@@ -318,7 +318,7 @@ trainer:
     all:
       _target_: training.loss_fns.MultiStepMultiMasksAndIous
       weight_dict:
-        loss_mask: 20
+        loss_mask: 30
         loss_struc: 1
         loss_dice: 1
         loss_iou: 1
@@ -361,7 +361,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_MoCA2/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:

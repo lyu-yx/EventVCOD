@@ -6,10 +6,10 @@ scratch:
   num_train_workers: 8
   num_frames: 8
   max_num_objects: 1
-  base_lr: 3.0e-6
-  vision_lr: 3.0e-06
+  base_lr: 3.0e-7
+  vision_lr: 3.0e-7
   phases_per_epoch: 1
-  num_epochs: 400
+  num_epochs: 300
 
 dataset:
   multiplier: 1
@@ -318,7 +318,7 @@ trainer:
     all:
       _target_: training.loss_fns.MultiStepMultiMasksAndIous
       weight_dict:
-        loss_mask: 20
+        loss_mask: 30
         loss_struc: 1
         loss_dice: 1
         loss_iou: 1
@@ -361,7 +361,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense3/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
