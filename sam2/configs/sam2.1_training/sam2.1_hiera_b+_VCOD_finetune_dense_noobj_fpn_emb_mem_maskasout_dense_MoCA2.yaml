@@ -9,7 +9,7 @@ scratch:
   base_lr: 3.0e-7
   vision_lr: 3.0e-7
   phases_per_epoch: 1
-  num_epochs: 300
+  num_epochs: 600
 
 dataset:
   multiplier: 1
