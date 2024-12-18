@@ -7,7 +7,7 @@ scratch:
   num_frames: 8
   max_num_objects: 1
   base_lr: 1.0e-6
-  vision_lr: 1.0e-6
+  finer_lr: 1.0e-6
   phases_per_epoch: 1
   num_epochs: 300
 
@@ -228,8 +228,8 @@ trainer:
     freeze_image_encoder: True
     freeze_mask_decoder: True
     freeze_embedding_generator: False
-    freeze_memory_attention: True
-    freeze_memory_encoder: True
+    freeze_memory_attention: False
+    freeze_memory_encoder: False
     freeze_prompt_encoder: True
 
     
@@ -242,22 +242,9 @@ trainer:
       _target_: training.dataset.sam2_datasets.TorchTrainMixedDataset 
       phases_per_epoch: ${scratch.phases_per_epoch} # Chunks a single epoch into smaller phases
       batch_sizes: # List of batch sizes corresponding to each dataset
-      - 8
       - 1 # Batch size of dataset 1
       datasets:
-      - _target_: training.dataset.vos_dataset.VOSDataset
-        transforms: ${vos.train_transforms}
-        training: true
-        video_dataset:
-          _target_: training.dataset.vos_raw_dataset.COD10KDataset
-          img_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/Imgs/
-          gt_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/GT_sampler/
-          # file_list_txt: ${path_to_train_filelist} # Optional
-        sampler:
-          _target_: training.dataset.vos_sampler.RandomUniformSampler
-          num_frames: 1
-          max_num_objects: ${scratch.max_num_objects}
-
+      
       - _target_: training.dataset.vos_dataset.VOSDataset
         transforms: ${vos.train_transforms}
         training: true
@@ -314,6 +301,12 @@ trainer:
             _target_: fvcore.common.param_scheduler.CosineParamScheduler
             start_value: ${scratch.base_lr}
             end_value: ${divide:${scratch.base_lr},10}
+        - scheduler:
+            _target_: fvcore.common.param_scheduler.CosineParamScheduler
+            start_value: ${scratch.finer_lr}
+            end_value: ${divide:${scratch.finer_lr},10}
+          param_names:
+          - 'image_encoder.*'
 
 
       weight_decay:

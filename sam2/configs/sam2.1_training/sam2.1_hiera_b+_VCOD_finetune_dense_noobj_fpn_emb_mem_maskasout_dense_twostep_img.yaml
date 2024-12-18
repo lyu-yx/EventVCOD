@@ -7,7 +7,7 @@ scratch:
   num_frames: 8
   max_num_objects: 1
   base_lr: 1.0e-6
-  vision_lr: 1.0e-6
+  finer_lr: 1.0e-7
   phases_per_epoch: 1
   num_epochs: 300
 
@@ -225,8 +225,8 @@ trainer:
     use_act_ckpt_iterative_pt_sampling: false
     
 
-    freeze_image_encoder: True
-    freeze_mask_decoder: True
+    freeze_image_encoder: False
+    freeze_mask_decoder: False
     freeze_embedding_generator: False
     freeze_memory_attention: True
     freeze_memory_encoder: True
@@ -244,38 +244,21 @@ trainer:
       batch_sizes: # List of batch sizes corresponding to each dataset
       - 8
       - 1 # Batch size of dataset 1
+      
       datasets:
-      - _target_: training.dataset.vos_dataset.VOSDataset
-        transforms: ${vos.train_transforms}
-        training: true
-        video_dataset:
-          _target_: training.dataset.vos_raw_dataset.COD10KDataset
-          img_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/Imgs/
-          gt_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/GT_sampler/
-          # file_list_txt: ${path_to_train_filelist} # Optional
-        sampler:
-          _target_: training.dataset.vos_sampler.RandomUniformSampler
-          num_frames: 1
-          max_num_objects: ${scratch.max_num_objects}
+        - _target_: training.dataset.vos_dataset.VOSDataset
+          transforms: ${vos.train_transforms}
+          training: true
+          video_dataset:
+            _target_: training.dataset.vos_raw_dataset.COD10KDataset
+            img_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/Imgs/
+            gt_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/GT_sampler/
+            # file_list_txt: ${path_to_train_filelist} # Optional
+          sampler:
+            _target_: training.dataset.vos_sampler.RandomUniformSampler
+            num_frames: 1
+            max_num_objects: ${scratch.max_num_objects}
 
-      - _target_: training.dataset.vos_dataset.VOSDataset
-        transforms: ${vos.train_transforms}
-        training: true
-        video_dataset:
-          _target_: training.dataset.vos_raw_dataset.VCODDatasetMoCA
-          img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
-          gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
-          eventflow_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/MoCA-Video-Train_event/
-          # file_list_txt: None
-          # ann_every: 4
-        sampler:
-          _target_: training.dataset.vos_sampler.RandomUniformSampler
-          num_frames: ${scratch.num_frames} # Number of frames per video
-          max_num_objects: ${scratch.max_num_objects}
-          reverse_time_prob: 0 # probability to reverse video
-        multiplier: ${dataset.multiplier}
-        # transforms: ${video_transforms}
-          
       shuffle: True
       num_workers: ${scratch.num_train_workers}
       pin_memory: True
@@ -314,6 +297,15 @@ trainer:
             _target_: fvcore.common.param_scheduler.CosineParamScheduler
             start_value: ${scratch.base_lr}
             end_value: ${divide:${scratch.base_lr},10}
+
+        - scheduler:
+            _target_: fvcore.common.param_scheduler.CosineParamScheduler
+            start_value: ${scratch.finer_lr}
+            end_value: ${divide:${scratch.finer_lr},10}
+          param_names:
+            - 'image_encoder.*'
+            - 'mask_decoder.*'
+
 
 
       weight_decay:
@@ -374,7 +366,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_imgandMoca/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_twostep_img/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
