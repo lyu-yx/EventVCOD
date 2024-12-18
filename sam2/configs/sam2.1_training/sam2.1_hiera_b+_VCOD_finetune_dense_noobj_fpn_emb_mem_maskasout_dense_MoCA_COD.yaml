@@ -12,7 +12,8 @@ scratch:
   num_epochs: 300
 
 dataset:
-  multiplier: 1
+  img_multiplier: 1
+  video_multiplier: 2
 
 # Video transforms
 vos:
@@ -260,6 +261,7 @@ trainer:
           _target_: training.dataset.vos_sampler.RandomUniformSampler
           num_frames: 1
           max_num_objects: ${scratch.max_num_objects}
+        multiplier: ${dataset.img_multiplier}
 
       - _target_: training.dataset.vos_dataset.VOSDataset
         transforms: ${vos.train_transforms}
@@ -276,7 +278,7 @@ trainer:
           num_frames: ${scratch.num_frames} # Number of frames per video
           max_num_objects: ${scratch.max_num_objects}
           reverse_time_prob: 0 # probability to reverse video
-        multiplier: ${dataset.multiplier}
+        multiplier: ${dataset.video_multiplier}
         # transforms: ${video_transforms}
           
       shuffle: True
