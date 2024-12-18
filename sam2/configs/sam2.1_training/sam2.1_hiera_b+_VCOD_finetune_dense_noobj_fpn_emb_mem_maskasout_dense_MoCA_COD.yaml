@@ -7,7 +7,7 @@ scratch:
   num_frames: 8
   max_num_objects: 1
   base_lr: 1.0e-6
-  vision_lr: 1.0e-6
+  finer_lr: 1.0e-7
   phases_per_epoch: 1
   num_epochs: 300
 
@@ -226,11 +226,13 @@ trainer:
     
 
     freeze_image_encoder: True
-    freeze_mask_decoder: True
+    freeze_mask_decoder: False
     freeze_embedding_generator: False
-    freeze_memory_attention: True
+    freeze_memory_attention: False
+    freeze_short_long_relation_attention: False
     freeze_memory_encoder: True
     freeze_prompt_encoder: True
+    
 
     
     num_init_cond_frames_for_eval: 1  # only mask on the first frame
@@ -252,6 +254,7 @@ trainer:
           _target_: training.dataset.vos_raw_dataset.COD10KDataset
           img_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/Imgs/
           gt_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/GT_sampler/
+          eventflow_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/eventflow/
           # file_list_txt: ${path_to_train_filelist} # Optional
         sampler:
           _target_: training.dataset.vos_sampler.RandomUniformSampler
@@ -314,6 +317,13 @@ trainer:
             _target_: fvcore.common.param_scheduler.CosineParamScheduler
             start_value: ${scratch.base_lr}
             end_value: ${divide:${scratch.base_lr},10}
+        - scheduler:
+            _target_: fvcore.common.param_scheduler.CosineParamScheduler
+            start_value: ${scratch.finer_lr}
+            end_value: ${divide:${scratch.finer_lr},10}
+          param_names:
+          - 'sam_mask_decoder.*'
+          - 'memory_attention.*'
 
 
       weight_decay:
