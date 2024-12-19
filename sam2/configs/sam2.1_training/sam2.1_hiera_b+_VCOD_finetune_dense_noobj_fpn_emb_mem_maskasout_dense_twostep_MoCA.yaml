@@ -7,7 +7,7 @@ scratch:
   num_frames: 8
   max_num_objects: 1
   base_lr: 1.0e-6
-  finer_lr: 1.0e-6
+  finer_lr: 1.0e-7
   phases_per_epoch: 1
   num_epochs: 300
 
@@ -58,7 +58,7 @@ trainer:
   seed_value: 123
 
   model:
-    _target_: training.model.sam2_vcod_dense_fpn_emb_mem_dense.SAM2TrainVCODPromptGenerator
+    _target_: training.model.sam2_vcod_dense_fpn_emb_mem_dense_imgandMoCA.SAM2TrainVCODPromptGenerator
     image_encoder:
       _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
       scalp: 1
@@ -226,9 +226,10 @@ trainer:
     
 
     freeze_image_encoder: True
-    freeze_mask_decoder: True
+    freeze_mask_decoder: False
     freeze_embedding_generator: False
     freeze_memory_attention: False
+    freeze_short_long_relation_attention: False
     freeze_memory_encoder: False
     freeze_prompt_encoder: True
 
@@ -244,7 +245,6 @@ trainer:
       batch_sizes: # List of batch sizes corresponding to each dataset
       - 1 # Batch size of dataset 1
       datasets:
-      
       - _target_: training.dataset.vos_dataset.VOSDataset
         transforms: ${vos.train_transforms}
         training: true
@@ -253,16 +253,13 @@ trainer:
           img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
           gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
           eventflow_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/MoCA-Video-Train_event/
-          # file_list_txt: None
-          # ann_every: 4
         sampler:
           _target_: training.dataset.vos_sampler.RandomUniformSampler
           num_frames: ${scratch.num_frames} # Number of frames per video
           max_num_objects: ${scratch.max_num_objects}
           reverse_time_prob: 0 # probability to reverse video
-        multiplier: ${dataset.multiplier}
-        # transforms: ${video_transforms}
-          
+        multiplier: 1
+
       shuffle: True
       num_workers: ${scratch.num_train_workers}
       pin_memory: True
@@ -307,6 +304,8 @@ trainer:
             end_value: ${divide:${scratch.finer_lr},10}
           param_names:
           - 'image_encoder.*'
+          - 'sam_mask_decoder.*'
+          - 'memory_attention.*'
 
 
       weight_decay:
@@ -361,13 +360,13 @@ trainer:
 
       state_dict:
         _target_: training.utils.checkpoint_utils.load_checkpoint_and_apply_kernels
-        checkpoint_path: ./checkpoints/sam2.1_hiera_base_plus.pt # PATH to SAM 2.1 checkpoint
+        checkpoint_path: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_twostep_img/checkpoints/checkpoint.pt # PATH to SAM 2.1 checkpoint
         ckpt_state_dict_keys: ['model']
 
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_imgandMoca/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_twostep_video/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:

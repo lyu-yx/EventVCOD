@@ -58,7 +58,7 @@ trainer:
   seed_value: 123
 
   model:
-    _target_: training.model.sam2_vcod_dense_fpn_emb_mem_dense.SAM2TrainVCODPromptGenerator
+    _target_: training.model.sam2_vcod_dense_fpn_emb_mem_dense_imgandMoCA.SAM2TrainVCODPromptGenerator
     image_encoder:
       _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
       scalp: 1
@@ -225,10 +225,11 @@ trainer:
     use_act_ckpt_iterative_pt_sampling: false
     
 
-    freeze_image_encoder: False
+    freeze_image_encoder: True
     freeze_mask_decoder: False
     freeze_embedding_generator: False
-    freeze_memory_attention: True
+    freeze_memory_attention: False
+    freeze_short_long_relation_attention: False
     freeze_memory_encoder: True
     freeze_prompt_encoder: True
 
@@ -242,22 +243,22 @@ trainer:
       _target_: training.dataset.sam2_datasets.TorchTrainMixedDataset 
       phases_per_epoch: ${scratch.phases_per_epoch} # Chunks a single epoch into smaller phases
       batch_sizes: # List of batch sizes corresponding to each dataset
-      - 8
       - 1 # Batch size of dataset 1
-      
       datasets:
         - _target_: training.dataset.vos_dataset.VOSDataset
           transforms: ${vos.train_transforms}
           training: true
           video_dataset:
             _target_: training.dataset.vos_raw_dataset.COD10KDataset
-            img_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/Imgs/
-            gt_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/GT_sampler/
+            img_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
+            gt_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
+            eventflow_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
             # file_list_txt: ${path_to_train_filelist} # Optional
           sampler:
             _target_: training.dataset.vos_sampler.RandomUniformSampler
             num_frames: 1
             max_num_objects: ${scratch.max_num_objects}
+          multiplier: 1
 
       shuffle: True
       num_workers: ${scratch.num_train_workers}
@@ -297,15 +298,13 @@ trainer:
             _target_: fvcore.common.param_scheduler.CosineParamScheduler
             start_value: ${scratch.base_lr}
             end_value: ${divide:${scratch.base_lr},10}
-
         - scheduler:
             _target_: fvcore.common.param_scheduler.CosineParamScheduler
             start_value: ${scratch.finer_lr}
             end_value: ${divide:${scratch.finer_lr},10}
           param_names:
-            - 'image_encoder.*'
             - 'sam_mask_decoder.*'
-
+            - 'memory_attention.*'
 
 
       weight_decay:

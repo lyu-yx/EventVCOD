@@ -765,9 +765,9 @@ class SAM2Base(torch.nn.Module):
                 # directly add no-mem embedding (instead of using the transformer encoder)
                 pix_feat_with_mem = current_vision_feats[-1] + self.no_mem_embed
 
-                print('current_vision_feats_event[-1]', current_vision_feats_event[-1].shape)
-                print('B, C, H, W', B, C, H, W)
-                print('pix_feat_with_mem', pix_feat_with_mem.shape)
+                # print('current_vision_feats_event[-1]', current_vision_feats_event[-1].shape)
+                # print('B, C, H, W', B, C, H, W)
+                # print('pix_feat_with_mem', pix_feat_with_mem.shape)
                 pix_feat_with_mem = pix_feat_with_mem.permute(1, 2, 0).view(B, C, H, W)
 
                 pix_feat_with_mem_event = current_vision_feats_event[-1] + self.no_mem_embed
@@ -911,6 +911,7 @@ class SAM2Base(torch.nn.Module):
         # len high_res_event_features[0] torch.Size([1, 32, 256, 256])
         # len high_res_event_features[1] torch.Size([1, 64, 128, 128])
         
+        
         high_res_event_features_adp = self.high_res_event_features_adp(high_res_event_features)
         high_res_features_adp = self.high_res_features_adp(high_res_features)
         
@@ -922,6 +923,8 @@ class SAM2Base(torch.nn.Module):
         pix_feat_event = pix_feat_event.view(-1, self.hidden_dim, *feat_sizes[-1])
         pix_feat_event_adp = self.pix_feat_event_adp(pix_feat_event)
 
+        B = high_res_event_features[0].size(0)
+        # print('in _track_step B', B)
         
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
             # When use_mask_input_as_output_without_sam=True, we directly output the mask input
@@ -936,8 +939,8 @@ class SAM2Base(torch.nn.Module):
 
         else:
             
-            pix_feat_vit_adp = pix_feat.permute(0, 2, 3, 1).reshape(-1, 1, 256)
-            pix_feat_event_vit_adp = pix_feat_event_adp.permute(0, 2, 3, 1).reshape(-1, 1, 256)
+            pix_feat_vit_adp = pix_feat.permute(0, 2, 3, 1).reshape(-1, B, 256)
+            pix_feat_event_vit_adp = pix_feat_event_adp.permute(0, 2, 3, 1).reshape(-1, B, 256)
 
             pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
                 frame_idx=frame_idx,
