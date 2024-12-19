@@ -243,7 +243,7 @@ trainer:
       _target_: training.dataset.sam2_datasets.TorchTrainMixedDataset 
       phases_per_epoch: ${scratch.phases_per_epoch} # Chunks a single epoch into smaller phases
       batch_sizes: # List of batch sizes corresponding to each dataset
-      - 1 # Batch size of dataset 1
+      - 16 # Batch size of dataset 1
       datasets:
         - _target_: training.dataset.vos_dataset.VOSDataset
           transforms: ${vos.train_transforms}
