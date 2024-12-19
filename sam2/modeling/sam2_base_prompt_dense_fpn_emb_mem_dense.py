@@ -764,6 +764,10 @@ class SAM2Base(torch.nn.Module):
             if self.directly_add_no_mem_embed:
                 # directly add no-mem embedding (instead of using the transformer encoder)
                 pix_feat_with_mem = current_vision_feats[-1] + self.no_mem_embed
+
+                print('current_vision_feats_event[-1]', current_vision_feats_event[-1].shape)
+                print('B, C, H, W', B, C, H, W)
+                print('pix_feat_with_mem', pix_feat_with_mem.shape)
                 pix_feat_with_mem = pix_feat_with_mem.permute(1, 2, 0).view(B, C, H, W)
 
                 pix_feat_with_mem_event = current_vision_feats_event[-1] + self.no_mem_embed
