@@ -372,7 +372,7 @@ class COD10KDataset(VOSRawDataset):
         file_list_txt=None,
         excluded_videos_list_txt=None,
         sample_rate=1,
-        is_palette=False,
+        is_palette=True,
         single_object_mode=False,
         truncate_video=-1,
         frames_sampling_mult=False,
@@ -421,19 +421,23 @@ class COD10KDataset(VOSRawDataset):
                 video_names_mult.extend([video_name] * num_frames)
             self.video_names = video_names_mult
 
-        print('ini len of video_names:', len(self.video_names))
-
     def get_video(self, idx):
         """
         Given a VOSVideo object, return the mask tensors.
         """
-        print('get video len of video_names:', len(self.video_names))
         video_name = self.video_names[idx]
 
-        video_frame_path = os.path.join(self.img_folder, video_name + ".jpg")
-        video_eventflow_path = os.path.join(self.eventflow_folder, video_name + ".png")
+        if self.single_object_mode:
+            video_frame_root = os.path.join(
+                self.img_folder, os.path.dirname(video_name)
+            )
+        else:
+            video_frame_root = os.path.join(self.img_folder, video_name, 'Imgs')
+
+        video_mask_root = os.path.join(self.gt_folder, video_name, 'GT')
         
-        video_mask_root =  os.path.join(self.gt_folder, video_name)
+        # negative, postive or red_blue_visualization
+        video_eventflow_root = os.path.join(self.eventflow_folder, video_name, 'redblue')
 
         if self.is_palette:
             segment_loader = PalettisedPNGSegmentLoader(video_mask_root)
@@ -441,18 +445,29 @@ class COD10KDataset(VOSRawDataset):
             segment_loader = MultiplePNGSegmentLoader(
                 video_mask_root, self.single_object_mode
             )
+            
+        all_frames = sorted(glob.glob(os.path.join(video_frame_root, "*.jpg")))
+        all_eventflows = sorted(glob.glob(os.path.join(video_eventflow_root, "*.png")))
 
+        if self.truncate_video > 0:
+            all_frames = all_frames[: self.truncate_video]
+            all_eventflows = all_eventflows[: self.truncate_video]
         frames = []
         events = []
-        for frame_idx in range(self.num_frames):
-            frames.append(VOSFrame(frame_idx, image_path=video_frame_path))
-            events.append(VOSFrame(frame_idx, image_path=video_eventflow_path))
-        video_name = video_name.split("_")[-1]  # filename is sa_{int}
-        # video id needs to be image_id to be able to load correct annotation file during eval
+        
+        for _, fpath in enumerate(all_frames[:: self.sample_rate]):
+            fid = int(os.path.basename(fpath).split(".")[0])
+            frames.append(VOSFrame(fid, image_path=fpath))
 
-        video = VOSVideo(video_name, 0, frames, events)
+        for _, fpath in enumerate(all_eventflows[:: self.sample_rate]):
+            fid = int(os.path.basename(fpath).split(".")[0])
+            events.append(VOSFrame(fid, image_path=fpath))
 
+        video = VOSVideo(video_name, idx, frames, events)
         return video, segment_loader
+
+    def __len__(self):
+        return len(self.video_names)
 
 
     def __len__(self):
