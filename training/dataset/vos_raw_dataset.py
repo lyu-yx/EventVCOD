@@ -356,7 +356,6 @@ class VCODDatasetMoCA(VOSRawDataset):
             fid = int(os.path.basename(fpath).split(".")[0])
             events.append(VOSFrame(fid, image_path=fpath))
 
-
         video = VOSVideo(video_name, idx, frames, events)
         return video, segment_loader
 
@@ -422,10 +421,13 @@ class COD10KDataset(VOSRawDataset):
                 video_names_mult.extend([video_name] * num_frames)
             self.video_names = video_names_mult
 
+        print('ini len of video_names:', len(self.video_names))
+
     def get_video(self, idx):
         """
         Given a VOSVideo object, return the mask tensors.
         """
+        print('get video len of video_names:', len(self.video_names))
         video_name = self.video_names[idx]
 
         video_frame_path = os.path.join(self.img_folder, video_name + ".jpg")
@@ -448,7 +450,7 @@ class COD10KDataset(VOSRawDataset):
         video_name = video_name.split("_")[-1]  # filename is sa_{int}
         # video id needs to be image_id to be able to load correct annotation file during eval
 
-        video = VOSVideo(video_name, idx, frames, events)
+        video = VOSVideo(video_name, 0, frames, events)
 
         return video, segment_loader
 

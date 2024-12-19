@@ -13,7 +13,7 @@ scratch:
 
 dataset:
   img_multiplier: 1
-  video_multiplier: 2
+  video_multiplier: 20
 
 # Video transforms
 vos:
