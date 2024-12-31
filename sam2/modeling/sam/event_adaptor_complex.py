@@ -73,6 +73,110 @@ class EventAdaptor(nn.Module):
             adapted = adapted + x
         return adapted
 
+
+class EventAdaptorAttention(nn.Module):
+    def __init__(self, feature_channels, use_residual=True, use_attention=True, dropout_rate=0.1):
+        """
+        Enhanced adaptor for FPN feature adaptation with attention and dropout.
+        
+        Args:
+            feature_channels (int): Number of input/output channels.
+            use_residual (bool): Whether to use residual connections.
+            use_attention (bool): Whether to apply attention mechanisms.
+            dropout_rate (float): Dropout rate for regularization.
+        """
+        super().__init__()
+        self.use_residual = use_residual
+        self.use_attention = use_attention
+        
+        # Spatial Mixing Block
+        self.spatial_block = nn.Sequential(
+            nn.Conv2d(
+                feature_channels, feature_channels,
+                kernel_size=3, padding=1, groups=feature_channels,
+                bias=False
+            ),
+            nn.BatchNorm2d(feature_channels),
+            nn.GELU()
+        )
+        
+        # Channel Mixing Block
+        self.channel_block = nn.Sequential(
+            nn.Conv2d(
+                feature_channels, feature_channels * 2,
+                kernel_size=1, bias=False
+            ),
+            nn.BatchNorm2d(feature_channels * 2),
+            nn.GELU(),
+            nn.Conv2d(
+                feature_channels * 2, feature_channels,
+                kernel_size=1, bias=False
+            ),
+            nn.BatchNorm2d(feature_channels)
+        )
+        
+        # Attention Mechanism (Squeeze-and-Excitation Block)
+        if self.use_attention:
+            self.attention_block = nn.Sequential(
+                nn.AdaptiveAvgPool2d(1),  # Global Avg Pooling
+                nn.Conv2d(feature_channels, feature_channels // 4, kernel_size=1),
+                nn.GELU(),
+                nn.Conv2d(feature_channels // 4, feature_channels, kernel_size=1),
+                nn.Sigmoid()
+            )
+        
+        # Dropout for regularization
+        self.dropout = nn.Dropout2d(dropout_rate)
+        
+        # Initialize weights
+        self._initialize_weights()
+    
+    def _initialize_weights(self):
+        """
+        Initialize weights using He initialization.
+        """
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+    
+    def forward(self, x):
+        """
+        Forward pass maintaining input dimensions.
+        
+        Args:
+            x (torch.Tensor): Input feature tensor [B, C, H, W]
+        
+        Returns:
+            torch.Tensor: Adapted feature tensor [B, C, H, W]
+        """
+        residual = x
+        
+        # Spatial Mixing
+        x = self.spatial_block(x)
+        
+        # Channel Mixing
+        x = self.channel_block(x)
+        
+        # Attention Mechanism
+        if self.use_attention:
+            attention = self.attention_block(x)
+            x = x * attention  # Apply channel attention
+        
+        # Dropout
+        x = self.dropout(x)
+        
+        # Residual Connection
+        if self.use_residual:
+            x = x + residual
+        
+        return x
+
+
 class MultiLevelEventAdaptor(nn.Module):
     def __init__(self, in_channels_list, use_residual=True):
         """

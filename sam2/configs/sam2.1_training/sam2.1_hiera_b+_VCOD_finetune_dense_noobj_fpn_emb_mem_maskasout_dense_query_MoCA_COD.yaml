@@ -12,7 +12,8 @@ scratch:
   num_epochs: 300
 
 dataset:
-  multiplier: 1
+  img_multiplier: 1
+  video_multiplier: 20
 
 # Video transforms
 vos:
@@ -230,8 +231,9 @@ trainer:
     freeze_embedding_generator: False
     freeze_memory_attention: False
     freeze_short_long_relation_attention: False
-    freeze_memory_encoder: False
+    freeze_memory_encoder: True
     freeze_prompt_encoder: True
+    
 
     
     num_init_cond_frames_for_eval: 1  # only mask on the first frame
@@ -243,8 +245,24 @@ trainer:
       _target_: training.dataset.sam2_datasets.TorchTrainMixedDataset 
       phases_per_epoch: ${scratch.phases_per_epoch} # Chunks a single epoch into smaller phases
       batch_sizes: # List of batch sizes corresponding to each dataset
-      - 1 # Batch size of dataset 1
+        - 16
+        - 1 # Batch size of dataset 1
       datasets:
+      - _target_: training.dataset.vos_dataset.VOSDataset
+        transforms: ${vos.train_transforms}
+        training: true
+        video_dataset:
+          _target_: training.dataset.vos_raw_dataset.COD10KDataset
+          img_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
+          gt_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
+          eventflow_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
+          # file_list_txt: ${path_to_train_filelist} # Optional
+        sampler:
+          _target_: training.dataset.vos_sampler.RandomUniformSampler
+          num_frames: 1
+          max_num_objects: ${scratch.max_num_objects}
+        multiplier: ${dataset.img_multiplier}
+
       - _target_: training.dataset.vos_dataset.VOSDataset
         transforms: ${vos.train_transforms}
         training: true
@@ -253,13 +271,16 @@ trainer:
           img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
           gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
           eventflow_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/MoCA-Video-Train_event/
+          # file_list_txt: None
+          # ann_every: 4
         sampler:
           _target_: training.dataset.vos_sampler.RandomUniformSampler
           num_frames: ${scratch.num_frames} # Number of frames per video
           max_num_objects: ${scratch.max_num_objects}
           reverse_time_prob: 0 # probability to reverse video
-        multiplier: 1
-
+        multiplier: ${dataset.video_multiplier}
+        # transforms: ${video_transforms}
+          
       shuffle: True
       num_workers: ${scratch.num_train_workers}
       pin_memory: True
@@ -303,7 +324,6 @@ trainer:
             start_value: ${scratch.finer_lr}
             end_value: ${divide:${scratch.finer_lr},10}
           param_names:
-          - 'image_encoder.*'
           - 'sam_mask_decoder.*'
           - 'memory_attention.*'
 
@@ -360,13 +380,13 @@ trainer:
 
       state_dict:
         _target_: training.utils.checkpoint_utils.load_checkpoint_and_apply_kernels
-        checkpoint_path: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_twostep_img/checkpoints/checkpoint_50.pt # PATH to SAM 2.1 checkpoint
+        checkpoint_path: ./checkpoints/sam2.1_hiera_base_plus.pt # PATH to SAM 2.1 checkpoint
         ckpt_state_dict_keys: ['model']
 
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_twostep_video/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_imgandMoca/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
