@@ -418,15 +418,16 @@ class SAM2Base(torch.nn.Module):
 
         # Compute MSE loss for dense embeddings when offering dense embeddings ground truth
         if point_inputs is not None:
-           mse_prompt = F.mse_loss(sparse_embeddings, sparse_embeddings_gt[:,-1:,:])
-
+            mse_prompt = F.mse_loss(sparse_embeddings, sparse_embeddings_gt[:,-1:,:])
+            embedding_loss = mse_prompt 
         if mask_inputs is not None: 
-           mse_prompt = F.mse_loss(dense_embeddings, dense_embeddings_gt)
+            mse_prompt = F.mse_loss(dense_embeddings, dense_embeddings_gt)
+            embedding_loss = mse_prompt 
         # print('sparse_embeddings', sparse_embeddings.shape)
         # print('sparse_embeddings_gt', sparse_embeddings_gt.shape)
         # mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt[:,-1:,:])
 
-        embedding_loss = mse_prompt 
+            
 
         if self.pred_obj_scores:  # predict if there is an object disappear in following frame
             is_obj_appearing = object_score_logits > 0
