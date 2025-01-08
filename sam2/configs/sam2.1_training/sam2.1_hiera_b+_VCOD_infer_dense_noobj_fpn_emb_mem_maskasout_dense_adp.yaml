@@ -101,7 +101,7 @@ model:
         downsample_rate: 1
         dropout: 0.1
         kv_in_dim: 64
-    num_layers: 2
+    num_layers: 4
 
   memory_encoder:
     _target_: sam2.modeling.memory_encoder.MemoryEncoder
