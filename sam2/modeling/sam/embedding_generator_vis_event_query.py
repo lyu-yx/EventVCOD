@@ -279,7 +279,7 @@ class EfficientQueryEmbeddingGenerator(nn.Module):
         Input:
             - backbone_features: [B, mask_in_chans, H, W]
             - event_features:    [B, mask_in_chans, H, W]
-            - high_res_features:        list of [B, c, Hx, Wx] (3 levels)
+            - high_res_features:        list of [B, c, Hx, Wx] (2 levels)
             - high_res_event_features:  list of [B, c, Hy, Wy] (2 levels)
 
         Output:

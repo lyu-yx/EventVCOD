@@ -415,7 +415,7 @@ class SAM2Base(torch.nn.Module):
             repeat_image=False,  # the image is already batched
             high_res_features=high_res_features,
         )
-
+        embedding_loss = 0
         # Compute MSE loss for dense embeddings when offering dense embeddings ground truth
         if point_inputs is not None:
             mse_prompt = F.mse_loss(sparse_embeddings, sparse_embeddings_gt[:,-1:,:])
@@ -971,12 +971,12 @@ class SAM2Base(torch.nn.Module):
                 event_features=pix_feat_short_long,
                 point_inputs=point_inputs,
                 mask_inputs=mask_inputs,
-                high_res_features=high_res_features,
+                high_res_features=high_res_features_adp,
                 high_res_event_features=high_res_event_features_adp,
                 multimask_output=multimask_output,
             )
 
-        return current_out, sam_outputs, high_res_features, high_res_event_features_adp, pix_feat, pix_feat_short_long, embedding_loss
+        return current_out, sam_outputs, high_res_features_adp, high_res_event_features_adp, pix_feat, pix_feat_short_long, embedding_loss
 
     def _encode_memory_in_output(
         self,
