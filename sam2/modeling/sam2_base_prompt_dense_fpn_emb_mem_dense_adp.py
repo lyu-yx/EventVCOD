@@ -17,7 +17,7 @@ from sam2.modeling.sam.embedding_generator_vis_event import initialize_embedding
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
-from sam2.modeling.sam.event_adaptor_complex import MultiLevelEventAdaptor, EventAdaptorAttention, EventAdaptor
+from sam2.modeling.sam.event_adaptor_complex import MultiLevelEventAdaptor, EventAdaptor
 # from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
 # a large negative value as a placeholder score for missing objects
@@ -137,6 +137,8 @@ class SAM2Base(torch.nn.Module):
         self.hidden_dim = image_encoder.neck.d_model
 
         # Part 2.1: feature fusion for the memory decoder
+        
+
         # Part 3: memory encoder for the previous frame's outputs
         self.memory_encoder = memory_encoder
         self.mem_dim = self.hidden_dim
@@ -261,10 +263,9 @@ class SAM2Base(torch.nn.Module):
         self.high_res_event_features_adp=MultiLevelEventAdaptor(in_channels_list=[32, 64], use_residual=True) # high res feat channel
         self.high_res_features_adp = MultiLevelEventAdaptor(in_channels_list=[32, 64], use_residual=True) # high res feat channel
         
-        # self.pix_feat_adp = EventAdaptorAttention(256, use_residual=True, use_attention=True)
-        # self.pix_feat_event_adp = EventAdaptorAttention(256, use_residual=True, use_attention=True)
         self.pix_feat_adp = EventAdaptor(256, use_residual=True)
         self.pix_feat_event_adp = EventAdaptor(256, use_residual=True)
+
         self.embedding_generator.apply(initialize_embedding_generator)
         
         self.sam_mask_decoder = MaskDecoder(
@@ -413,17 +414,17 @@ class SAM2Base(torch.nn.Module):
             repeat_image=False,  # the image is already batched
             high_res_features=high_res_features,
         )
-        embedding_loss = 0
-        # Compute MSE loss for dense embeddings when offering dense embeddings ground truth
-        if point_inputs is not None:
-            mse_prompt = F.mse_loss(sparse_embeddings, sparse_embeddings_gt[:,-1:,:])
-            embedding_loss = mse_prompt 
-        if mask_inputs is not None: 
-            mse_prompt = F.mse_loss(dense_embeddings, dense_embeddings_gt)
-            embedding_loss = mse_prompt 
+
+        # mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt)
+
+        # Compute MSE loss for dense embeddings
+        mse_dense = F.mse_loss(dense_embeddings, dense_embeddings_gt)
         # print('sparse_embeddings', sparse_embeddings.shape)
         # print('sparse_embeddings_gt', sparse_embeddings_gt.shape)
         # mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt[:,-1:,:])
+
+        # Combine the losses (you can use a weighted sum if needed)
+        embedding_loss = mse_dense 
 
         if self.pred_obj_scores:  # predict if there is an object disappear in following frame
             is_obj_appearing = object_score_logits > 0
