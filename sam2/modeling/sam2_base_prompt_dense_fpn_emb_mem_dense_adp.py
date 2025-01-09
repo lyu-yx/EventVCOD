@@ -137,8 +137,6 @@ class SAM2Base(torch.nn.Module):
         self.hidden_dim = image_encoder.neck.d_model
 
         # Part 2.1: feature fusion for the memory decoder
-        
-
         # Part 3: memory encoder for the previous frame's outputs
         self.memory_encoder = memory_encoder
         self.mem_dim = self.hidden_dim
@@ -426,8 +424,6 @@ class SAM2Base(torch.nn.Module):
         # print('sparse_embeddings', sparse_embeddings.shape)
         # print('sparse_embeddings_gt', sparse_embeddings_gt.shape)
         # mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt[:,-1:,:])
-
-            
 
         if self.pred_obj_scores:  # predict if there is an object disappear in following frame
             is_obj_appearing = object_score_logits > 0

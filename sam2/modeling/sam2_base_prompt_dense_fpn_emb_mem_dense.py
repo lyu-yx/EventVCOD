@@ -17,7 +17,7 @@ from sam2.modeling.sam.embedding_generator_vis_event import initialize_embedding
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
-from sam2.modeling.sam.event_adaptor_complex import MultiLevelEventAdaptor, EventAdaptorAttention, EventAdaptor
+from sam2.modeling.sam.event_adaptor_complex import MultiLevelEventAdaptor, EventAdaptor
 # from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
 # a large negative value as a placeholder score for missing objects
@@ -263,10 +263,9 @@ class SAM2Base(torch.nn.Module):
         self.high_res_event_features_adp=MultiLevelEventAdaptor(in_channels_list=[32, 64], use_residual=True) # high res feat channel
         self.high_res_features_adp = MultiLevelEventAdaptor(in_channels_list=[32, 64], use_residual=True) # high res feat channel
         
-        # self.pix_feat_adp = EventAdaptorAttention(256, use_residual=True, use_attention=True)
-        # self.pix_feat_event_adp = EventAdaptorAttention(256, use_residual=True, use_attention=True)
         self.pix_feat_adp = EventAdaptor(256, use_residual=True)
         self.pix_feat_event_adp = EventAdaptor(256, use_residual=True)
+
         self.embedding_generator.apply(initialize_embedding_generator)
         
         self.sam_mask_decoder = MaskDecoder(
@@ -415,19 +414,17 @@ class SAM2Base(torch.nn.Module):
             repeat_image=False,  # the image is already batched
             high_res_features=high_res_features,
         )
-        embedding_loss = 0
-        # Compute MSE loss for dense embeddings when offering dense embeddings ground truth
-        if point_inputs is not None:
-            mse_prompt = F.mse_loss(sparse_embeddings, sparse_embeddings_gt[:,-1:,:])
-            embedding_loss = mse_prompt 
-        if mask_inputs is not None: 
-            mse_prompt = F.mse_loss(dense_embeddings, dense_embeddings_gt)
-            embedding_loss = mse_prompt 
+
+        # mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt)
+
+        # Compute MSE loss for dense embeddings
+        mse_dense = F.mse_loss(dense_embeddings, dense_embeddings_gt)
         # print('sparse_embeddings', sparse_embeddings.shape)
         # print('sparse_embeddings_gt', sparse_embeddings_gt.shape)
         # mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt[:,-1:,:])
 
-            
+        # Combine the losses (you can use a weighted sum if needed)
+        embedding_loss = mse_dense 
 
         if self.pred_obj_scores:  # predict if there is an object disappear in following frame
             is_obj_appearing = object_score_logits > 0
@@ -942,7 +939,7 @@ class SAM2Base(torch.nn.Module):
 
         else:
             
-            pix_feat_vit_adp = pix_feat_adp.permute(0, 2, 3, 1).reshape(-1, B, 256)
+            pix_feat_vit_adp = pix_feat.permute(0, 2, 3, 1).reshape(-1, B, 256)
             pix_feat_event_vit_adp = pix_feat_event_adp.permute(0, 2, 3, 1).reshape(-1, B, 256)
 
             pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
@@ -971,12 +968,12 @@ class SAM2Base(torch.nn.Module):
                 event_features=pix_feat_short_long,
                 point_inputs=point_inputs,
                 mask_inputs=mask_inputs,
-                high_res_features=high_res_features_adp,
+                high_res_features=high_res_features,
                 high_res_event_features=high_res_event_features_adp,
                 multimask_output=multimask_output,
             )
 
-        return current_out, sam_outputs, high_res_features_adp, high_res_event_features_adp, pix_feat, pix_feat_short_long, embedding_loss
+        return current_out, sam_outputs, high_res_features, high_res_event_features_adp, pix_feat, pix_feat_short_long, embedding_loss
 
     def _encode_memory_in_output(
         self,
