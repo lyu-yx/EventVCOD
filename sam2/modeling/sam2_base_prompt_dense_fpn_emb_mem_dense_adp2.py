@@ -929,17 +929,13 @@ class SAM2Base(torch.nn.Module):
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
             # When use_mask_input_as_output_without_sam=True, we directly output the mask input
             # (see it as a GT mask) without using a SAM prompt encoder + mask decoder.
-            
-
             pix_feat_short_long = pix_feat_event_adp
-            
             sam_outputs, embedding_loss = self._use_mask_as_output(
                 pix_feat_adp, pix_feat_event_adp, high_res_features_adp, high_res_event_features_adp, mask_inputs
             )
 
         else:
-            
-            pix_feat_vit_adp = pix_feat_adp.permute(0, 2, 3, 1).reshape(-1, B, 256)
+            pix_feat_vit_adp = pix_feat.permute(0, 2, 3, 1).reshape(-1, B, 256)
             pix_feat_event_vit_adp = pix_feat_event_adp.permute(0, 2, 3, 1).reshape(-1, B, 256)
 
             pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
@@ -968,12 +964,12 @@ class SAM2Base(torch.nn.Module):
                 event_features=pix_feat_short_long,
                 point_inputs=point_inputs,
                 mask_inputs=mask_inputs,
-                high_res_features=high_res_features_adp,
+                high_res_features=high_res_features,
                 high_res_event_features=high_res_event_features_adp,
                 multimask_output=multimask_output,
             )
 
-        return current_out, sam_outputs, high_res_features_adp, high_res_event_features_adp, pix_feat, pix_feat_short_long, embedding_loss
+        return current_out, sam_outputs, high_res_features, high_res_event_features_adp, pix_feat, pix_feat_short_long, embedding_loss
 
     def _encode_memory_in_output(
         self,

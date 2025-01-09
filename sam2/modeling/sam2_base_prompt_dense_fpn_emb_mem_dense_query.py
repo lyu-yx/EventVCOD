@@ -17,7 +17,7 @@ from sam2.modeling.sam.embedding_generator_vis_event_query import initialize_emb
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
-from sam2.modeling.sam.event_adaptor_complex import MultiLevelEventAdaptor, EventAdaptor
+# from sam2.modeling.sam.event_adaptor_complex import MultiLevelEventAdaptor, EventAdaptor
 # from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
 # a large negative value as a placeholder score for missing objects
@@ -263,8 +263,8 @@ class SAM2Base(torch.nn.Module):
         # self.high_res_event_features_adp=MultiLevelEventAdaptor(in_channels_list=[32, 64], use_residual=True) # high res feat channel
         # self.high_res_features_adp = MultiLevelEventAdaptor(in_channels_list=[32, 64], use_residual=True) # high res feat channel
         
-        self.pix_feat_adp = EventAdaptor(256, use_residual=True)
-        self.pix_feat_event_adp = EventAdaptor(256, use_residual=True)
+        # self.pix_feat_adp = EventAdaptor(256, use_residual=True)
+        # self.pix_feat_event_adp = EventAdaptor(256, use_residual=True)
 
         self.embedding_generator.apply(initialize_embedding_generator)
         
@@ -919,12 +919,12 @@ class SAM2Base(torch.nn.Module):
         high_res_features_adp = high_res_features
 
         pix_feat = current_vision_feats[-1].permute(1, 2, 0)
-        pix_feat = pix_feat.view(-1, self.hidden_dim, *feat_sizes[-1])
-        pix_feat_adp = self.pix_feat_adp(pix_feat)
+        # pix_feat = pix_feat.view(-1, self.hidden_dim, *feat_sizes[-1])
+        # pix_feat_adp = self.pix_feat_adp(pix_feat)
 
         pix_feat_event = current_vision_feats_event[-1].permute(1, 2, 0)
-        pix_feat_event = pix_feat_event.view(-1, self.hidden_dim, *feat_sizes[-1])
-        pix_feat_event_adp = self.pix_feat_event_adp(pix_feat_event)
+        # pix_feat_event = pix_feat_event.view(-1, self.hidden_dim, *feat_sizes[-1])
+        # pix_feat_event_adp = self.pix_feat_event_adp(pix_feat_event)
 
         B = high_res_event_features[0].size(0)
         # print('in _track_step B', B)
@@ -932,15 +932,17 @@ class SAM2Base(torch.nn.Module):
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
             # When use_mask_input_as_output_without_sam=True, we directly output the mask input
             # (see it as a GT mask) without using a SAM prompt encoder + mask decoder.
-            pix_feat_short_long = pix_feat_event_adp
+            pix_feat_short_long = pix_feat_event
             sam_outputs, embedding_loss = self._use_mask_as_output(
-                pix_feat_adp, pix_feat_event_adp, high_res_features_adp, high_res_event_features_adp, mask_inputs
+                pix_feat, pix_feat_event, high_res_features_adp, high_res_event_features_adp, mask_inputs
             )
 
         else:
-            pix_feat_vit_adp = pix_feat.permute(0, 2, 3, 1).reshape(-1, B, 256)
-            pix_feat_event_vit_adp = pix_feat_event_adp.permute(0, 2, 3, 1).reshape(-1, B, 256)
+            # pix_feat_vit_adp = pix_feat.permute(0, 2, 3, 1).reshape(-1, B, 256)
+            # pix_feat_event_vit_adp = pix_feat_event.permute(0, 2, 3, 1).reshape(-1, B, 256)
 
+            pix_feat_vit_adp = pix_feat
+            pix_feat_event_vit_adp = pix_feat_event
             pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
                 frame_idx=frame_idx,
                 is_init_cond_frame=is_init_cond_frame,
