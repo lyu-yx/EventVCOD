@@ -15,7 +15,7 @@ dataset:
   multiplier: 1
 
 model:
-  _target_: training.model.sam2_vcod_dense_fpn_emb_mem.SAM2TrainVCODPromptGenerator
+  _target_: training.model.sam2_vcod_dense_fpn_emb_mem_dense_imgandMoCA_adp.SAM2TrainVCODPromptGenerator
   image_encoder:
     _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
     scalp: 1
