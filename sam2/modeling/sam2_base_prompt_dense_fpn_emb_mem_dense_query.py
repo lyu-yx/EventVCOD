@@ -260,8 +260,8 @@ class SAM2Base(torch.nn.Module):
             mask_in_chans=self.hidden_dim,
         )
 
-        self.high_res_event_features_adp=MultiLevelEventAdaptor(in_channels_list=[32, 64], use_residual=True) # high res feat channel
-        self.high_res_features_adp = MultiLevelEventAdaptor(in_channels_list=[32, 64], use_residual=True) # high res feat channel
+        # self.high_res_event_features_adp=MultiLevelEventAdaptor(in_channels_list=[32, 64], use_residual=True) # high res feat channel
+        # self.high_res_features_adp = MultiLevelEventAdaptor(in_channels_list=[32, 64], use_residual=True) # high res feat channel
         
         self.pix_feat_adp = EventAdaptor(256, use_residual=True)
         self.pix_feat_event_adp = EventAdaptor(256, use_residual=True)
@@ -912,9 +912,12 @@ class SAM2Base(torch.nn.Module):
         # len high_res_event_features[1] torch.Size([1, 64, 128, 128])
         
         
-        high_res_event_features_adp = self.high_res_event_features_adp(high_res_event_features)
-        high_res_features_adp = self.high_res_features_adp(high_res_features)
+        # high_res_event_features_adp = self.high_res_event_features_adp(high_res_event_features)
+        # high_res_features_adp = self.high_res_features_adp(high_res_features)
         
+        high_res_event_features_adp = high_res_event_features
+        high_res_features_adp = high_res_features
+
         pix_feat = current_vision_feats[-1].permute(1, 2, 0)
         pix_feat = pix_feat.view(-1, self.hidden_dim, *feat_sizes[-1])
         pix_feat_adp = self.pix_feat_adp(pix_feat)

@@ -142,7 +142,7 @@ class MiniTransformerDecoder(nn.Module):
     Simple Transformer Decoder that uses a set of learnable queries 
     to attend to flattened feature maps.
     """
-    def __init__(self, d_model=256, nhead=8, num_layers=2, num_queries=4):
+    def __init__(self, d_model=256, nhead=4, num_layers=2, num_queries=4):
         super().__init__()
         decoder_layer = MiniTransformerDecoderLayer(d_model, nhead)
         self.transformer_decoder = nn.TransformerDecoder(decoder_layer, num_layers)
@@ -193,7 +193,7 @@ class EfficientQueryEmbeddingGenerator(nn.Module):
         dense_ffn_dim: int = 256,
         # Sparse query-related params
         d_model: int = 256,
-        nhead: int = 4,
+        nhead: int = 2,
         num_decoder_layers: int = 2,
         num_queries: int = 4,
     ) -> None:
@@ -228,13 +228,23 @@ class EfficientQueryEmbeddingGenerator(nn.Module):
         # --------------------------------------
         # 4) Transformer-based Dense Refinement
         # --------------------------------------
+        # self.dense_refiner = DenseTransformerRefiner(
+        #     in_channels=mask_in_chans,
+        #     hidden_dim=dense_hidden_dim,
+        #     out_channels=embed_dim,   # final dimension of the dense embedding
+        #     num_layers=dense_num_layers,
+        #     nhead=dense_nhead,
+        #     dim_feedforward=dense_ffn_dim,
+        # )
+
         self.dense_refiner = DenseTransformerRefiner(
-            in_channels=mask_in_chans,
-            hidden_dim=dense_hidden_dim,
-            out_channels=embed_dim,   # final dimension of the dense embedding
-            num_layers=dense_num_layers,
-            nhead=dense_nhead,
-            dim_feedforward=dense_ffn_dim,
+            in_channels=256,
+            hidden_dim=32,        # was 128 or 256
+            out_channels=embed_dim,     # was embed_dim or 256
+            num_layers=2,
+            nhead=4,              # reduce heads
+            dim_feedforward=128,  # was 1024
+            dropout=0.1,
         )
 
         # Region attention (optional)
@@ -308,7 +318,7 @@ class EfficientQueryEmbeddingGenerator(nn.Module):
         dense_embeddings = self.dense_refiner(attn_feats)
 
         # (Optional) region attention on refined embeddings
-        region_mask = torch.sigmoid(self.region_attention(dense_embeddings))
+        # region_mask = torch.sigmoid(self.region_attention(dense_embeddings))
         # If you want to incorporate region_mask back into the embeddings, you can do so:
         # e.g., dense_embeddings = dense_embeddings * (1 + region_mask)
 
