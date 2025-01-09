@@ -187,13 +187,13 @@ class EfficientQueryEmbeddingGenerator(nn.Module):
         mask_in_chans: int,
         activation: Type[nn.Module] = nn.GELU,
         # Dense transformer refinement params
-        dense_hidden_dim: int = 256,
+        dense_hidden_dim: int = 128,
         dense_num_layers: int = 2,
         dense_nhead: int = 8,
-        dense_ffn_dim: int = 1024,
+        dense_ffn_dim: int = 256,
         # Sparse query-related params
         d_model: int = 256,
-        nhead: int = 8,
+        nhead: int = 4,
         num_decoder_layers: int = 2,
         num_queries: int = 4,
     ) -> None:
