@@ -209,6 +209,38 @@ class MultiLevelEventAdaptor(nn.Module):
             for adaptor, feature in zip(self.adaptors, features)
         ]
 
+
+class MultiLevelEventAdaptorAttention(nn.Module):
+    def __init__(self, in_channels_list, use_residual=True, use_attention=True, dropout_rate=0.1):
+        """
+        Adaptor for multiple FPN levels.
+        
+        Args:
+            in_channels_list (list): List of channel counts for each level
+            use_residual (bool): Whether to use residual connections
+        """
+        super().__init__()
+        
+        # Create separate adaptors for each level
+        self.adaptors = nn.ModuleList([
+            EventAdaptorAttention(channels, use_residual, use_attention, dropout_rate)
+            for channels in in_channels_list
+        ])
+    
+    def forward(self, features):
+        """
+        Adapt features at each level.
+        
+        Args:
+            features (list): List of feature tensors from FPN levels
+        
+        Returns:
+            list: Adapted features maintaining original dimensions
+        """
+        return [
+            adaptor(feature)
+            for adaptor, feature in zip(self.adaptors, features)
+        ]
 def event_adaptor(event_data):
     """
     Wrapper function for feature adaptation.
