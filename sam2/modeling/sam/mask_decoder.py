@@ -408,8 +408,6 @@ class MaskDecoderPromptless(nn.Module):
         Arguments:
           image_embeddings (torch.Tensor): the embeddings from the image encoder
           image_pe (torch.Tensor): positional encoding with the shape of image_embeddings
-          sparse_prompt_embeddings (torch.Tensor): the embeddings of the points and boxes
-          dense_prompt_embeddings (torch.Tensor): the embeddings of the mask inputs
           multimask_output (bool): Whether to return multiple masks or a single
             mask.
 
@@ -421,8 +419,6 @@ class MaskDecoderPromptless(nn.Module):
         masks, iou_pred, mask_tokens_out, object_score_logits = self.predict_masks(
             image_embeddings=image_embeddings,
             image_pe=image_pe,
-            # sparse_prompt_embeddings=sparse_prompt_embeddings,
-            # dense_prompt_embeddings=dense_prompt_embeddings,
             repeat_image=repeat_image,
             high_res_features=high_res_features,
         )
@@ -454,8 +450,6 @@ class MaskDecoderPromptless(nn.Module):
         self,
         image_embeddings: torch.Tensor,
         image_pe: torch.Tensor,
-        # sparse_prompt_embeddings: torch.Tensor,
-        # dense_prompt_embeddings: torch.Tensor,
         repeat_image: bool,
         high_res_features: Optional[List[torch.Tensor]] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -481,6 +475,9 @@ class MaskDecoderPromptless(nn.Module):
                 dim=0
             )
         tokens = output_tokens.unsqueeze(0)
+
+        output_tokens = output_tokens.unsqueeze(0).expand(sparse_prompt_embeddings.size(0), -1, -1)
+        tokens = torch.cat((output_tokens, sparse_prompt_embeddings), dim=1)
 
         # Expand per-image data in batch direction to be per-mask
         if repeat_image:
