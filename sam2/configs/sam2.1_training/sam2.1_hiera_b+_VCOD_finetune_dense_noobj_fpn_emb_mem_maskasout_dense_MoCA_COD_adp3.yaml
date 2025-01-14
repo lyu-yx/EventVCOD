@@ -6,6 +6,7 @@ scratch:
   num_train_workers: 8
   num_frames: 8
   max_num_objects: 1
+  larger_lr: 1.0e-5
   base_lr: 1.0e-6
   finer_lr: 1.0e-7
   phases_per_epoch: 1
@@ -231,8 +232,8 @@ trainer:
     freeze_embedding_generator: False
     freeze_memory_attention: False
     freeze_short_long_relation_attention: False
-    freeze_memory_encoder: False
-    freeze_prompt_encoder: False
+    freeze_memory_encoder: True
+    freeze_prompt_encoder: True
     
 
     
@@ -324,8 +325,14 @@ trainer:
             start_value: ${scratch.finer_lr}
             end_value: ${divide:${scratch.finer_lr},10}
           param_names:
-          - 'sam_mask_decoder.*'
           - 'memory_attention.*'
+        - scheduler:
+            _target_: fvcore.common.param_scheduler.CosineParamScheduler
+            start_value: ${scratch.larger_lr}
+            end_value: ${divide:${scratch.larger_lr},10}
+          param_names:
+          - 'sam_mask_decoder.*'
+          - 'short_long_relation_attention.*'
 
 
       weight_decay:
