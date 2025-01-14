@@ -398,8 +398,7 @@ class SAM2Base(torch.nn.Module):
         # print('len high_res_event_features', len(high_res_event_features))
         # print('high_res_features', high_res_features[0].shape)
         # print('high_res_event_features', high_res_event_features[0].shape)
-        sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features, event_features, high_res_features, high_res_event_features)# a) Handle point prompts
-
+        
         (
             low_res_multimasks,
             ious,
@@ -408,23 +407,12 @@ class SAM2Base(torch.nn.Module):
         ) = self.sam_mask_decoder(
             image_embeddings=backbone_features,
             image_pe=self.embedding_generator.get_dense_pe(),
-            sparse_prompt_embeddings=sparse_embeddings,
-            dense_prompt_embeddings=dense_embeddings,
             multimask_output=multimask_output,
             repeat_image=False,  # the image is already batched
             high_res_features=high_res_features,
         )
 
-        # mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt)
-
-        # Compute MSE loss for dense embeddings
-        mse_dense = F.mse_loss(dense_embeddings, dense_embeddings_gt)
-        # print('sparse_embeddings', sparse_embeddings.shape)
-        # print('sparse_embeddings_gt', sparse_embeddings_gt.shape)
-        # mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt[:,-1:,:])
-
-        # Combine the losses (you can use a weighted sum if needed)
-        embedding_loss = mse_dense 
+        embedding_loss = 0.0
 
         if self.pred_obj_scores:  # predict if there is an object disappear in following frame
             is_obj_appearing = object_score_logits > 0
