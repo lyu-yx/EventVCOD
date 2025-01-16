@@ -138,7 +138,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
     def forward(self, input: BatchedVideoDatapoint):
         if self.training or not self.forward_backbone_per_frame_for_eval:
             # precompute image features on all frames before tracking
-            backbone_out_img = self.forward_image(input.flat_img_batch)
+            backbone_out_img = self.forward_image(input.flat_img_batch) # img_batch: A [TxBxCxHxW] tensor containing the image data for each frame in the batch
+                                                                        # input.flat_img_batch: [(B*T)xCxHxW]
             backbone_out_event = self.forward_image(input.flat_event_batch)
         else:
             # defer image feature computation on a frame until it's being tracked
@@ -147,6 +148,16 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
 
         backbone_out_img = self.prepare_prompt_inputs(backbone_out_img, input)
         backbone_out_event = self.prepare_prompt_inputs(backbone_out_event, input)
+
+        print('len backbone_out_img["backbone_fpn"] ', len(backbone_out_img["backbone_fpn"]))
+        print('backbone_out_img["backbone_fpn"][0] shape', backbone_out_img["backbone_fpn"][0].shape)
+        print('backbone_out_img["vision_features"] shape', backbone_out_img["vision_features"].shape)
+
+        print('len backbone_out_event["backbone_fpn"] ', len(backbone_out_event["backbone_fpn"]))
+        print('backbone_out_event["backbone_fpn"][0] shape', backbone_out_event["backbone_fpn"][0].shape)
+        print('backbone_out_event["vision_features"] shape', backbone_out_event["vision_features"].shape)
+
+        print('input.flat_img_batch.shape', input.flat_img_batch.shape)
 
         previous_stages_out, embedding_loss = self.forward_tracking(backbone_out_img, backbone_out_event, input)
 
@@ -347,6 +358,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         # first process all the initial conditioning frames to encode them as memory,
         # and then conditioning on them to track the remaining frames
         processing_order = init_cond_frames + backbone_out["frames_not_in_init_cond"]
+        print('processing_order', processing_order)
         output_dict = {
             "cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
             "non_cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
@@ -357,7 +369,6 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             img_ids = input.flat_obj_to_img_idx[stage_id]
             if img_feats_already_computed:
                 # Retrieve image features according to img_ids (if they are already computed).
-                
                 current_vision_feats = [x[:, img_ids] for x in vision_feats]
                 current_vision_pos_embeds = [x[:, img_ids] for x in vision_pos_embeds]
                 current_vision_feats_event = [x[:, img_ids] for x in vision_feats_event]
