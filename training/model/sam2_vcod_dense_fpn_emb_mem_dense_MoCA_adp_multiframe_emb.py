@@ -9,7 +9,7 @@ import logging
 import numpy as np
 import torch
 import torch.distributed
-from sam2.modeling.sam2_base_prompt_dense_fpn_emb_mem_dense_adp import SAM2Base
+from sam2.modeling.sam2_base_prompt_dense_fpn_emb_mem_dense_adp_multiframe_emb import SAM2Base
 from sam2.modeling.sam2_utils import (
     get_1d_sine_pe,
     get_next_point,
@@ -377,7 +377,9 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             "non_cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
         }
 
-        cur_video = {}
+        cur_video = {"vision_feats":[], "vision_pos_embeds":[], "vision_feats_event":[], "vision_pos_embeds_event":[]}
+        video_len = vision_feats.shape[0]
+        
         for stage_id in processing_order:
             # Get the image features for the current frames
             # img_ids = input.find_inputs[stage_id].img_ids
@@ -388,6 +390,31 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 current_vision_pos_embeds = [x[:, img_ids] for x in vision_pos_embeds]
                 current_vision_feats_event = [x[:, img_ids] for x in vision_feats_event]
                 current_vision_pos_embeds_event = [x[:, img_ids] for x in vision_pos_embeds_event]
+            
+                if stage_id + self.num_frames_embedding < video_len:
+                    for i in range(self.num_frames_embedding):
+                        cur_video["vision_feats"].append([x[:, img_ids + i + 1] for x in vision_feats])
+                        cur_video["vision_pos_embeds"].append([x[:, img_ids + i + 1] for x in vision_pos_embeds])
+                        cur_video["vision_feats_event"].append([x[:, img_ids + i + 1] for x in vision_feats_event])
+                        cur_video["vision_pos_embeds_event"].append([x[:, img_ids + i + 1] for x in vision_pos_embeds_event])
+                else:
+                    for i in range(self.num_frames_embedding):
+                        if img_ids + i + 1 < video_len:
+                            cur_video["vision_feats"].append([x[:, img_ids + i + 1] for x in vision_feats])
+                            cur_video["vision_pos_embeds"].append([x[:, img_ids + i + 1] for x in vision_pos_embeds])
+                            cur_video["vision_feats_event"].append([x[:, img_ids + i + 1] for x in vision_feats_event])
+                            cur_video["vision_pos_embeds_event"].append([x[:, img_ids + i + 1] for x in vision_pos_embeds_event])
+                        else:
+                            # Append zeros for exceeding part
+                            zero_feat = [torch.zeros_like(x[:, 0]) for x in vision_feats]
+                            zero_pos_embed = [torch.zeros_like(x[:, 0]) for x in vision_pos_embeds]
+                            zero_feat_event = [torch.zeros_like(x[:, 0]) for x in vision_feats_event]
+                            zero_pos_embed_event = [torch.zeros_like(x[:, 0]) for x in vision_pos_embeds_event]
+
+                            cur_video["vision_feats"].append(zero_feat)
+                            cur_video["vision_pos_embeds"].append(zero_pos_embed)
+                            cur_video["vision_feats_event"].append(zero_feat_event)
+                            cur_video["vision_pos_embeds_event"].append(zero_pos_embed_event)
             else:
                 # Otherwise, compute the image features on the fly for the given img_ids
                 # (this might be used for evaluation on long videos to avoid backbone OOM).
@@ -402,12 +429,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 ) = self._prepare_backbone_features_per_frame(
                     input.flat_img_batch, input.flat_event_batch, img_ids
                 )
-                
-
-            cur_video["vision_feats"] = vision_feats
-            cur_video["vision_pos_embeds"] = vision_pos_embeds
-            cur_video["vision_feats_event"] = vision_feats_event
-            cur_video["vision_pos_embeds_event"] = vision_pos_embeds_event
+            
 
             # Get output masks based on this frame's prompts and previous memory
             current_out, embedding_loss = self.track_step(
@@ -479,6 +501,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             current_vision_pos_embeds,
             current_vision_feats_event,
             current_vision_pos_embeds_event,
+            cur_video,
             feat_sizes,
             point_inputs,
             mask_inputs,
