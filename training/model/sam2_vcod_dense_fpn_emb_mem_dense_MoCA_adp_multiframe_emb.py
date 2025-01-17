@@ -66,6 +66,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         # whether to forward image features per frame (as it's being tracked) during evaluation, instead of forwarding image features
         # of all frames at once. This avoids backbone OOM errors on very long videos in evaluation, but could be slightly slower.
         forward_backbone_per_frame_for_eval=False,
+        num_frames_embedding=3,
         freeze_image_encoder=False,
         freeze_mask_decoder=False,
         freeze_embedding_generator=False,
@@ -106,7 +107,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         self.prob_to_sample_from_gt_for_train = prob_to_sample_from_gt_for_train
         # A random number generator with a fixed initial seed across GPUs
         self.rng = np.random.default_rng(seed=42)
-
+        self.num_frames_embedding = num_frames_embedding
+        
         if freeze_image_encoder:
             for p in self.image_encoder.parameters():
                 p.requires_grad = False

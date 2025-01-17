@@ -31,6 +31,7 @@ class SAM2VideoPredictor(SAM2Base):
         # if `add_all_frames_to_correct_as_cond` is True, we also append to the conditioning frame list any frame that receives a later correction click
         # if `add_all_frames_to_correct_as_cond` is False, we conditioning frame list to only use those initial conditioning frames
         add_all_frames_to_correct_as_cond=False,
+        num_frames_embedding=3,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -39,7 +40,7 @@ class SAM2VideoPredictor(SAM2Base):
         self.clear_non_cond_mem_around_input = clear_non_cond_mem_around_input
         self.clear_non_cond_mem_for_multi_obj = clear_non_cond_mem_for_multi_obj
         self.add_all_frames_to_correct_as_cond = add_all_frames_to_correct_as_cond
-
+        self.num_frames_embedding = num_frames_embedding
     @torch.inference_mode()
     def init_state(
         self,
