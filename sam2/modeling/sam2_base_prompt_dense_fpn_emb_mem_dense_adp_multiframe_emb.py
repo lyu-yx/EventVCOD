@@ -11,9 +11,8 @@ import torch.nn.functional as F
 from torch.nn.init import trunc_normal_
 
 
-from sam2.modeling.sam.mask_decoder import MaskDecoderPromptless
-from sam2.modeling.sam.embedding_generator_vis_event import EmbeddingGenerator
-from sam2.modeling.sam.embedding_generator_vis_event import initialize_embedding_generator
+from sam2.modeling.sam.mask_decoder import MaskDecoder
+from sam2.modeling.sam.embedding_generator_vis_event_multiframe_ebd import EmbeddingGenerator, initialize_embedding_generator
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
@@ -268,7 +267,7 @@ class SAM2Base(torch.nn.Module):
 
         self.embedding_generator.apply(initialize_embedding_generator)
         
-        self.sam_mask_decoder = MaskDecoderPromptless(
+        self.sam_mask_decoder = MaskDecoder(
             num_multimask_outputs=3,
             transformer=TwoWayTransformer(
                 depth=2,

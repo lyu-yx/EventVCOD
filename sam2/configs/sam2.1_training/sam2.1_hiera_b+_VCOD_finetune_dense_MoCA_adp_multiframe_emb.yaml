@@ -60,7 +60,7 @@ trainer:
   seed_value: 123
 
   model:
-    _target_: training.model.sam2_vcod_dense_fpn_emb_mem_dense_imgandMoCA_adp_newdec.SAM2TrainVCODPromptGenerator
+    _target_: training.model.sam2_vcod_dense_fpn_emb_mem_dense_MoCA_adp_multiframe_emb.SAM2TrainVCODPromptGenerator
     image_encoder:
       _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
       scalp: 1
@@ -246,24 +246,8 @@ trainer:
       _target_: training.dataset.sam2_datasets.TorchTrainMixedDataset 
       phases_per_epoch: ${scratch.phases_per_epoch} # Chunks a single epoch into smaller phases
       batch_sizes: # List of batch sizes corresponding to each dataset
-        - 16
         - 1 # Batch size of dataset 1
       datasets:
-      - _target_: training.dataset.vos_dataset.VOSDataset
-        transforms: ${vos.train_transforms}
-        training: true
-        video_dataset:
-          _target_: training.dataset.vos_raw_dataset.COD10KDataset
-          img_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
-          gt_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
-          eventflow_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
-          # file_list_txt: ${path_to_train_filelist} # Optional
-        sampler:
-          _target_: training.dataset.vos_sampler.RandomUniformSampler
-          num_frames: 1
-          max_num_objects: ${scratch.max_num_objects}
-        multiplier: ${dataset.img_multiplier}
-
       - _target_: training.dataset.vos_dataset.VOSDataset
         transforms: ${vos.train_transforms}
         training: true

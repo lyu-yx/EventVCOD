@@ -1,215 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import List, Tuple, Type, Dict
-from prompt_gen.backbone.position_encoding import PositionEmbeddingRandom
+from typing import List, Tuple, Dict, Type
 
-
-class EmbeddingGenerator(nn.Module):
-    def __init__(
-        self,
-        embed_dim: int,
-        image_embedding_size: Tuple[int, int],
-        input_image_size: Tuple[int, int],
-        mask_in_chans: int,
-        activation: Type[nn.Module] = nn.GELU,
-    ) -> None:
-        super().__init__()
-        
-        self.embed_dim = embed_dim
-        self.image_embedding_size = image_embedding_size
-        self.input_image_size = input_image_size
-        self.activation = activation()
-        
-        # Backbone and event feature processing
-        self.backbone_processor = nn.Sequential(
-            nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=1),
-            nn.BatchNorm2d(mask_in_chans),
-            self.activation,
-        )
-        
-        self.event_processor = nn.Sequential(
-            nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=1),
-            nn.BatchNorm2d(mask_in_chans),
-            self.activation,
-        )
-        
-        # Fusion and normalization
-        self.fusion = nn.Conv2d(mask_in_chans * 2, mask_in_chans, kernel_size=1)
-        self.norm = nn.BatchNorm2d(mask_in_chans)
-        
-        # Dense and sparse embedder
-        self.dense_embedder = nn.Sequential(
-            nn.Conv2d(mask_in_chans, embed_dim, kernel_size=1),
-            nn.BatchNorm2d(embed_dim),
-            self.activation,
-        )
-        
-        self.sparse_embedder = nn.Sequential(
-            PyramidPooling(mask_in_chans),
-            nn.Conv2d(mask_in_chans * 5, embed_dim, kernel_size=1),
-            nn.AdaptiveAvgPool2d(1),
-        )
-
-    def forward(
-        self,
-        cur_video: Dict[str, List[torch.Tensor]],
-        current_frame_features: torch.Tensor,
-        mask_features: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Forward pass with feature reuse from cur_video.
-        
-        Args:
-            cur_video: Dictionary containing features for previous frames.
-            current_frame_features: Backbone features of the current frame.
-            mask_features: Features from the mask for the current frame.
-        
-        Returns:
-            Tuple of sparse and dense embeddings for the current frame.
-        """
-        # Combine features from cur_video for backbone and event paths
-        if cur_video["vision_feats"] and cur_video["vision_feats_event"]:
-            backbone_history = torch.stack(cur_video["vision_feats"], dim=1).mean(dim=1)  # Average historical features
-            event_history = torch.stack(cur_video["vision_feats_event"], dim=1).mean(dim=1)  # Average historical features
-        else:
-            backbone_history = torch.zeros_like(current_frame_features)
-            event_history = torch.zeros_like(mask_features)
-
-        # Process the current frame and combine with historical data
-        backbone_processed = self.backbone_processor(current_frame_features + backbone_history)
-        event_processed = self.event_processor(mask_features + event_history)
-        
-        # Fuse and normalize features
-        fused_features = torch.cat([backbone_processed, event_processed], dim=1)
-        fused_features = self.norm(self.fusion(fused_features))
-        
-        # Generate dense and sparse embeddings
-        dense_embeddings = self.dense_embedder(fused_features)
-        sparse_embeddings = self.sparse_embedder(fused_features).flatten(2).transpose(1, 2)
-        
-        return sparse_embeddings, dense_embeddings
-
-
-class MultiResolutionFusion(nn.Module):
-    def __init__(self, target_channels: int):
-        super().__init__()
-        # Adaptive feature adjustment modules
-        self.feature_adapters = nn.ModuleList([
-            nn.Sequential(
-                nn.Conv2d(in_channels, target_channels, kernel_size=1),
-                nn.BatchNorm2d(target_channels),
-                nn.ReLU(inplace=True)
-            ) for in_channels in [32, 64, 256]  # Adjust based on your specific feature channels
-        ])
-        
-        # Learnable fusion weights
-        self.fusion_weights = nn.Parameter(torch.ones(3, dtype=torch.float32))
-        
-        # Final fusion convolution
-        self.fusion_conv = nn.Sequential(
-            nn.Conv2d(target_channels * 3, target_channels, kernel_size=1),
-            nn.BatchNorm2d(target_channels),
-            nn.ReLU(inplace=True)
-        )
-    
-    def forward(self, features_list: List[torch.Tensor]) -> torch.Tensor:
-        # Normalize fusion weights
-        normalized_weights = F.softmax(self.fusion_weights, dim=0)
-        
-        # Process and resize features
-        processed_features = []
-        for adapter, feature in zip(self.feature_adapters, features_list):
-            # Adaptive channel adjustment
-            feature_adapted = adapter(feature)
-            
-            # Resize to the resolution of the first (highest resolution) feature
-            if feature_adapted.shape[-2:] != features_list[2].shape[-2:]:
-                feature_adapted = F.interpolate(
-                    feature_adapted, 
-                    size=features_list[2].shape[-2:], 
-                    mode='bilinear', 
-                    align_corners=False
-                )
-            
-            processed_features.append(feature_adapted)
-        
-        # Weighted fusion
-        weighted_features = [w * feat for w, feat in zip(normalized_weights, processed_features)]
-        
-        # Concatenate and fuse
-        fused_features = torch.cat(weighted_features, dim=1)
-        return self.fusion_conv(fused_features)
-
-
-
-class CrossFeatureGating(nn.Module):
-    def __init__(self, in_channels=256, reduction=8, backbone_weight=0.8, event_weight=0.4):
-        """
-        Cross-feature gating module with backbone dominance.
-
-        Args:
-            in_channels: Number of input channels for both features.
-            reduction: Reduction ratio for the gating mechanism.
-            backbone_weight: Weight for retaining original backbone information.
-            event_weight: Weight for retaining original event information.
-        """
-        super(CrossFeatureGating, self).__init__()
-        
-        # Gating for combined_event using combined_backbone
-        self.gate_event = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),  # Global average pooling
-            nn.Conv2d(in_channels, in_channels // reduction, kernel_size=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels // reduction, in_channels, kernel_size=1),
-            nn.Sigmoid()
-        )
-        
-        # Gating for combined_backbone using combined_event
-        self.gate_backbone = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),  # Global average pooling
-            nn.Conv2d(in_channels, in_channels // reduction, kernel_size=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels // reduction, in_channels, kernel_size=1),
-            nn.Sigmoid()
-        )
-        
-        # Weights for retaining information
-        self.backbone_weight = backbone_weight
-        self.event_weight = event_weight
-
-    def forward(self, combined_backbone, combined_event):
-        """
-        Forward pass of the cross-feature gating module.
-
-        Args:
-            combined_backbone: Dominant feature map of shape [B, C, H, W].
-            combined_event: Auxiliary feature map of shape [B, C, H, W].
-
-        Returns:
-            gated_combined_backbone: Enhanced dominant feature map.
-            gated_combined_event: Modulated auxiliary feature map.
-        """
-        # Gating for combined_event using combined_backbone
-        gate_event = self.gate_event(combined_backbone)  # Shape: [B, C, 1, 1]
-        gated_combined_event = combined_event * gate_event  # Modulate event features
-
-        # Gating for combined_backbone using combined_event
-        gate_backbone = self.gate_backbone(combined_event)  # Shape: [B, C, 1, 1]
-        gated_combined_backbone = combined_backbone * gate_backbone  # Modulate backbone features
-
-        # Retain more information from the backbone
-        gated_combined_backbone = self.backbone_weight * gated_combined_backbone + \
-                                  (1 - self.backbone_weight) * combined_backbone
-        
-        # Optionally retain some information in combined_event
-        gated_combined_event = self.event_weight * gated_combined_event + \
-                               (1 - self.event_weight) * combined_event
-
-        return gated_combined_backbone, gated_combined_event
-
-
-
+# Reuse (or adapt) your auxiliary modules:
 class ChannelAttention(nn.Module):
     def __init__(self, channels: int, reduction: int = 16):
         super().__init__()
@@ -270,19 +64,288 @@ class PyramidPooling(nn.Module):
             feat = F.interpolate(feat, size=(h, w), mode='bilinear', align_corners=False)
             features.append(feat)
         return torch.cat(features, dim=1)
-    
 
-    
+class PositionEmbeddingRandom(nn.Module):
+    """
+    Stub for your position embedding layer.
+    Modify or replace with your actual implementation.
+    """
+    def __init__(self, num_pos_feats: int = 64):
+        super().__init__()
+        self.num_pos_feats = num_pos_feats
+
+    def forward(self, shape: Tuple[int, int]) -> torch.Tensor:
+        """
+        shape: (height, width)
+        Return a random embedding of size [C, H, W].
+        """
+        h, w = shape
+        return torch.rand(self.num_pos_feats * 2, h, w)
+
+
 def initialize_embedding_generator(module):
     if isinstance(module, nn.Conv2d):
         nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
-        if module.bias is not None:  # Check if bias exists
+        if module.bias is not None:
             nn.init.constant_(module.bias, 0)
     elif isinstance(module, nn.Linear):
         nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
-        if module.bias is not None:  # Check if bias exists
+        if module.bias is not None:
             nn.init.constant_(module.bias, 0)
     elif isinstance(module, nn.BatchNorm2d):
         nn.init.constant_(module.weight, 1)
-        if module.bias is not None:  # Check if bias exists
+        if module.bias is not None:
             nn.init.constant_(module.bias, 0)
+class TemporalFeatureAggregator(nn.Module):
+    """
+    Simple GRU-based aggregator that processes a sequence of future-frame features
+    and returns a single summary vector (the final hidden state).
+    """
+    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int):
+        """
+        Args:
+            input_dim:  Feature dimension of each time step (e.g., 256 below).
+            hidden_dim: Internal GRU hidden dimension.
+            output_dim: The dimension we want in the final summary (e.g., mask_in_chans).
+        """
+        super().__init__()
+        self.gru = nn.GRU(input_dim, hidden_dim, batch_first=True)
+        self.out_fc = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x: [N, 4096, 256]  (N = number of future frames, seq_len=4096, input_dim=256)
+           or possibly [N, 4096, 1, 256] that you reshape to [N, 4096, 256].
+        
+        Returns:
+            summary: [1, output_dim, 1, 1]
+                - The final hidden-state vector (per batch=1 in this snippet)
+                  re-shaped to [1, out_dim, 1, 1] so you can broadcast.
+        """
+        # GRU expects [batch_size, seq_len, input_dim].
+        # Here, "batch_size" = N (# of future frames),
+        # "seq_len" = 4096, and "input_dim" = 256 in this example.
+
+        # x shape might be [N, 4096, 1, 256], so first squeeze the middle "1":
+        # e.g. x = x.squeeze(2) -> [N, 4096, 256] if that's your storage format.
+        if x.dim() == 4 and x.shape[2] == 1:
+            x = x.squeeze(2)  # -> [N, 4096, 256]
+
+        # Pass entire sequence through GRU
+        out, hidden = self.gru(x)  
+        # out:    [N, 4096, hidden_dim]  (every time step's hidden state)
+        # hidden: [1, N, hidden_dim]     (final hidden state)
+
+        # If you just want the final hidden state:
+        final_state = hidden[-1]  # shape [N, hidden_dim]
+
+        # Project to the desired output dimension
+        summary_vector = self.out_fc(final_state)  # [N, output_dim]
+
+        # Example: Suppose you have only 1 "batch" of future frames,
+        # then N=some_frames_count. Typically you'd want B*N if you
+        # process across a real batch dimension. Adapt as needed.
+
+        # Reshape so we can broadcast into [B, output_dim, H, W] later.
+        # For demonstration: returning [1, output_dim, 1, 1]
+        summary_vector = summary_vector.unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
+        # shape -> [1, N, output_dim, 1, 1], or if N=1, [1, output_dim, 1, 1]
+        # Adjust to your batch size as necessary.
+
+        return summary_vector
+    
+
+class EmbeddingGenerator(nn.Module):
+    """
+    A simplified embedding generator that:
+    1) Processes backbone and event features with minimal layers.
+    2) Fuses high-resolution features (both backbone & event) in a single step.
+    3) Optionally incorporates future-frame features from cur_video.
+    4) Produces sparse and dense embeddings.
+    """
+    def __init__(
+        self,
+        embed_dim: int,
+        image_embedding_size: Tuple[int, int],
+        input_image_size: Tuple[int, int],
+        mask_in_chans: int,
+        activation: Type[nn.Module] = nn.GELU,
+    ) -> None:
+        super().__init__()
+        
+        self.embed_dim = embed_dim
+        self.image_embedding_size = image_embedding_size
+        self.input_image_size = input_image_size
+        self.activation = activation()
+
+        # -----------------------
+        # 1. Simple backbone path
+        # -----------------------
+        self.backbone_block = nn.Sequential(
+            nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=1),
+            nn.BatchNorm2d(mask_in_chans),
+            self.activation,
+            ResidualBlock(mask_in_chans, mask_in_chans, activation),
+        )
+
+        # ----------------------
+        # 2. Simple event path
+        # ----------------------
+        self.event_block = nn.Sequential(
+            nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=1),
+            nn.BatchNorm2d(mask_in_chans),
+            self.activation,
+            ResidualBlock(mask_in_chans, mask_in_chans, activation),
+        )
+
+        # -----------------------------------------------
+        # 3. Single-step high-resolution feature fusion
+        #    (both backbone high_res and event high_res)
+        # -----------------------------------------------
+        self.highres_fusion_conv = nn.Sequential(
+            nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=1),
+            nn.BatchNorm2d(mask_in_chans),
+            self.activation
+        )
+
+        # -------------------------------------------------
+        # 4. Optional aggregator for future-frame features
+        #    from cur_video["vision_feats"] & ["vision_feats_event"]
+        # -------------------------------------------------
+        # We'll pool them with a small MLP to incorporate into the 2D feature map.
+        self.video_feature_aggregator = nn.Sequential(
+            nn.Conv1d(4096, mask_in_chans, kernel_size=1),
+            nn.ReLU(inplace=True),
+            nn.Conv1d(mask_in_chans, mask_in_chans, kernel_size=1),
+            nn.Sigmoid()  # you can choose an activation that best fits your usage
+        )
+
+        self.video_feature_rnn = TemporalFeatureAggregator(
+            input_dim=256,         # or adapt to your shape
+            hidden_dim=mask_in_chans,
+            output_dim=mask_in_chans
+        )
+
+        # -------------------------------------------
+        # 5. Attention modules + region attention
+        # -------------------------------------------
+        self.channel_attention = ChannelAttention(mask_in_chans)
+        self.spatial_attention = SpatialAttention()
+        self.region_attention = nn.Sequential(
+            nn.Conv2d(mask_in_chans, mask_in_chans // 2, kernel_size=1),
+            self.activation,
+            nn.Conv2d(mask_in_chans // 2, 1, kernel_size=3, padding=1)
+        )
+
+        # --------------------------------
+        # 6. Dense & Sparse embeddings
+        # --------------------------------
+        self.dense_embedder = nn.Sequential(
+            ResidualBlock(mask_in_chans, mask_in_chans, activation),
+            nn.Conv2d(mask_in_chans, embed_dim, kernel_size=1),
+        )
+        
+        self.sparse_embedder = nn.Sequential(
+            PyramidPooling(mask_in_chans),
+            nn.Conv2d(mask_in_chans * 5, embed_dim, kernel_size=1),
+            nn.AdaptiveAvgPool2d(1),
+        )
+
+        # Simple refinement that combines region attention with dense embeddings
+        self.refinement = nn.Sequential(
+            nn.Conv2d(embed_dim + 1, embed_dim, kernel_size=3, padding=1),
+            nn.BatchNorm2d(embed_dim),
+            self.activation
+        )
+
+        # Position embedding
+        self.pe_layer = PositionEmbeddingRandom(embed_dim // 2)
+
+    def forward(
+        self, 
+        backbone_features: torch.Tensor, 
+        event_features: torch.Tensor,
+        high_res_features: List[torch.Tensor],
+        high_res_event_features: List[torch.Tensor],
+        cur_video: Dict[str, List[torch.Tensor]] = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Args:
+            backbone_features: [B, mask_in_chans, H, W]
+            event_features: [B, mask_in_chans, H, W]
+            high_res_features: List of Tensors, e.g. 2 Tensors
+                in shapes [B, 32, 256, 256] and [B, 64, 128, 128]
+            high_res_event_features: List of Tensors, same structure as above
+            cur_video: dict with keys ["vision_feats", "vision_pos_embeds", 
+                                       "vision_feats_event", "vision_pos_embeds_event"] 
+                - each is a list (or tensor) of shape [4096, 1, 256], 
+                  or zero for out-of-range frames.
+        Returns:
+            sparse_embeddings: [B, (H*W), embed_dim]  # after flatten+transpose
+            dense_embeddings:  [B, embed_dim, H, W]
+        """
+
+        # 1. Minimal backbone processing
+        backbone_processed = self.backbone_block(backbone_features)
+
+        # 2. Minimal event processing
+        event_processed = self.event_block(event_features)
+
+        # 3. High-res fusion
+        fused_highres = torch.zeros_like(backbone_processed)
+        for feat in high_res_features:
+            if feat.shape[-2:] != backbone_processed.shape[-2:]:
+                feat = F.interpolate(feat, size=backbone_processed.shape[-2:], 
+                                     mode='bilinear', align_corners=False)
+            fused_highres += self.highres_fusion_conv(feat)
+
+        for feat in high_res_event_features:
+            if feat.shape[-2:] != backbone_processed.shape[-2:]:
+                feat = F.interpolate(feat, size=backbone_processed.shape[-2:], 
+                                     mode='bilinear', align_corners=False)
+            fused_highres += self.highres_fusion_conv(feat)
+
+        combined_features = backbone_processed + event_processed + fused_highres
+
+        # 4. Use the RNN aggregator if cur_video is provided
+        if cur_video is not None:
+            vision_feats = cur_video.get("vision_feats", None)
+            if vision_feats is not None and len(vision_feats) > 0:
+                # Suppose each item is [4096, 1, 256], stack them -> [N, 4096, 1, 256]
+                feats_stack = torch.stack(vision_feats, dim=0)
+                # Pass through the GRU aggregator
+                # aggregator will return something like [1, mask_in_chans, 1, 1]
+                future_summary = self.video_feature_rnn(feats_stack)
+                # Interpolate or expand to match combined_features shape
+                # e.g. if combined_features is [B, mask_in_chans, H, W],
+                # you can broadcast (or replicate) future_summary to match B,H,W.
+                if future_summary.shape[0] < combined_features.shape[0]:
+                    # For demonstration, just repeat for each batch element:
+                    future_summary = future_summary.repeat(combined_features.shape[0], 1, 1, 1)
+
+                # Now upsample to (H, W) if needed
+                future_summary = F.interpolate(
+                    future_summary, 
+                    size=combined_features.shape[-2:], 
+                    mode='bilinear', 
+                    align_corners=False
+                )
+                combined_features += future_summary
+
+        # 5. Attention
+        features = self.channel_attention(combined_features)
+        features = self.spatial_attention(features)
+
+        # 6. Region attention + dense/sparse embeddings
+        region_attention = torch.sigmoid(self.region_attention(features))
+        dense_embeddings = self.dense_embedder(features)
+        dense_embeddings = self.refinement(torch.cat([dense_embeddings, region_attention], dim=1))
+
+        sparse_embeddings = self.sparse_embedder(features)
+        sparse_embeddings = sparse_embeddings.flatten(2).transpose(1, 2)
+
+        return sparse_embeddings, dense_embeddings
+
+    def get_dense_pe(self) -> torch.Tensor:
+        """Reproduce the SAM-style positional embedding for dense features."""
+        return self.pe_layer(self.image_embedding_size).unsqueeze(0)
