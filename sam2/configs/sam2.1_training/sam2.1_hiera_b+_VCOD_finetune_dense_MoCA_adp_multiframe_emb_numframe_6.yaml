@@ -4,7 +4,7 @@ scratch:
   resolution: 1024
   train_batch_size: 1
   num_train_workers: 8
-  num_frames: 8
+  num_frames: 6
   max_num_objects: 1
   larger_lr: 1.0e-5
   base_lr: 1.0e-6
@@ -377,7 +377,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_multiframe_emb/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_multiframe_emb_num6/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:

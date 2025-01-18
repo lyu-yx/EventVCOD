@@ -380,4 +380,11 @@ class EmbeddingGenerator(nn.Module):
 
     def get_dense_pe(self) -> torch.Tensor:
         """Reproduce the SAM-style positional embedding for dense features."""
-        return self.pe_layer(self.image_embedding_size).unsqueeze(0)
+        # Create the positional embedding on CPU
+        pe = self.pe_layer(self.image_embedding_size).unsqueeze(0)
+
+        # Move it to the device of the current module's parameters
+        device = next(self.parameters()).device
+        pe = pe.to(device)
+
+        return pe
