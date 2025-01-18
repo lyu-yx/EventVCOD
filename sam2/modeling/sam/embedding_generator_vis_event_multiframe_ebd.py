@@ -155,6 +155,40 @@ class TemporalFeatureAggregator(nn.Module):
         return summary_vector
     
 
+class SimpleHighResFusion(nn.Module):
+    def __init__(self, out_channels=256):
+        super().__init__()
+        # Two separate "adapters"
+        self.adapter_32 = nn.Sequential(
+            nn.Conv2d(32, out_channels, kernel_size=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+        self.adapter_64 = nn.Sequential(
+            nn.Conv2d(64, out_channels, kernel_size=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+        # If you also have 256-ch features, you could just pass them through an identity or
+        # create an adapter_256.
+
+    def forward(self, feat, fused_accumulator):
+        """
+        feat: [B, C, H, W], C could be 32 or 64 (or something else)
+        fused_accumulator: the running sum or fused result, shape [B, 256, H, W]
+        """
+        in_channels = feat.shape[1]
+        if in_channels == 32:
+            feat = self.adapter_32(feat)  # -> [B, 256, H, W]
+        elif in_channels == 64:
+            feat = self.adapter_64(feat)  # -> [B, 256, H, W]
+        else:
+            raise ValueError(f"Unsupported input channels: {in_channels}")
+
+        # Then add it to the accumulator
+        fused_accumulator += feat
+        return fused_accumulator
+
 class EmbeddingGenerator(nn.Module):
     """
     A simplified embedding generator that:
@@ -202,11 +236,7 @@ class EmbeddingGenerator(nn.Module):
         # 3. Single-step high-resolution feature fusion
         #    (both backbone high_res and event high_res)
         # -----------------------------------------------
-        self.highres_fusion_conv = nn.Sequential(
-            nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=1),
-            nn.BatchNorm2d(mask_in_chans),
-            self.activation
-        )
+        self.highres_fusion_conv = SimpleHighResFusion(out_channels=256)
 
         # -------------------------------------------------
         # 4. Optional aggregator for future-frame features
@@ -284,6 +314,7 @@ class EmbeddingGenerator(nn.Module):
             sparse_embeddings: [B, (H*W), embed_dim]  # after flatten+transpose
             dense_embeddings:  [B, embed_dim, H, W]
         """
+        B, C, H, W = backbone_features.shape
 
         # 1. Minimal backbone processing
         backbone_processed = self.backbone_block(backbone_features)
@@ -292,18 +323,19 @@ class EmbeddingGenerator(nn.Module):
         event_processed = self.event_block(event_features)
 
         # 3. High-res fusion
-        fused_highres = torch.zeros_like(backbone_processed)
+        fused_highres = torch.zeros((B, 256, H, W), device=backbone_features.device)
         for feat in high_res_features:
-            if feat.shape[-2:] != backbone_processed.shape[-2:]:
-                feat = F.interpolate(feat, size=backbone_processed.shape[-2:], 
-                                     mode='bilinear', align_corners=False)
-            fused_highres += self.highres_fusion_conv(feat)
+            # Interpolate to match output H,W
+            if feat.shape[-2:] != (H, W):
+                feat = F.interpolate(feat, size=(H, W), mode='bilinear', align_corners=False)
+
+            fused_highres = self.highres_fusion_conv(feat, fused_highres)
 
         for feat in high_res_event_features:
-            if feat.shape[-2:] != backbone_processed.shape[-2:]:
-                feat = F.interpolate(feat, size=backbone_processed.shape[-2:], 
-                                     mode='bilinear', align_corners=False)
-            fused_highres += self.highres_fusion_conv(feat)
+            if feat.shape[-2:] != (H, W):
+                feat = F.interpolate(feat, size=(H, W), mode='bilinear', align_corners=False)
+
+            fused_highres = self.highres_fusion_conv(feat, fused_highres)
 
         combined_features = backbone_processed + event_processed + fused_highres
 

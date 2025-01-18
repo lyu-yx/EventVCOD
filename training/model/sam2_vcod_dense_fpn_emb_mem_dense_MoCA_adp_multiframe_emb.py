@@ -108,7 +108,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         # A random number generator with a fixed initial seed across GPUs
         self.rng = np.random.default_rng(seed=42)
         self.num_frames_embedding = num_frames_embedding
-        
+
         if freeze_image_encoder:
             for p in self.image_encoder.parameters():
                 p.requires_grad = False
@@ -380,7 +380,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         }
 
         cur_video = {"vision_feats":[], "vision_pos_embeds":[], "vision_feats_event":[], "vision_pos_embeds_event":[]}
-        video_len = vision_feats.shape[0]
+        video_len = len(processing_order)
         
         for stage_id in processing_order:
             # Get the image features for the current frames
