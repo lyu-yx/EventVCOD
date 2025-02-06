@@ -165,15 +165,17 @@ class EventAdaptorAttention(nn.Module):
         # Attention Mechanism
         if self.use_attention:
             attention = self.attention_block(x)
-            x = x * attention  # Apply channel attention
+            x = x * (1 + attention)  # Apply channel attention
         
-        # Dropout
-        x = self.dropout(x)
+        
         
         # Residual Connection
         if self.use_residual:
             x = x + residual
         
+        # Dropout
+        x = self.dropout(x)
+
         return x
 
 
@@ -209,6 +211,37 @@ class MultiLevelEventAdaptor(nn.Module):
             for adaptor, feature in zip(self.adaptors, features)
         ]
 
+class MultiLevelTinyEventAdaptor(nn.Module):
+    def __init__(self, in_channels_list, use_residual=True):
+        """
+        Adaptor for multiple FPN levels.
+        
+        Args:
+            in_channels_list (list): List of channel counts for each level
+            use_residual (bool): Whether to use residual connections
+        """
+        super().__init__()
+        
+        # Create separate adaptors for each level
+        self.adaptors = nn.ModuleList([
+            TinyEventAdaptor(channels, use_residual)
+            for channels in in_channels_list
+        ])
+    
+    def forward(self, features):
+        """
+        Adapt features at each level.
+        
+        Args:
+            features (list): List of feature tensors from FPN levels
+        
+        Returns:
+            list: Adapted features maintaining original dimensions
+        """
+        return [
+            adaptor(feature)
+            for adaptor, feature in zip(self.adaptors, features)
+        ]
 
 class MultiLevelEventAdaptorAttention(nn.Module):
     def __init__(self, in_channels_list, use_residual=True, use_attention=True, dropout_rate=0.1):
@@ -291,3 +324,64 @@ def vis_adaptor(vis_data):
             use_residual=True
         ).to(vis_data.device)
         return adaptor(vis_data)
+    
+
+class TinyEventAdaptor(nn.Module):
+    def __init__(self, feature_channels, use_residual=True):
+        """
+        A tiny yet efficient adaptor that mixes spatial and channel information.
+        
+        Args:
+            feature_channels (int): Number of input (and output) channels.
+            use_residual (bool): Whether to add a residual connection.
+        """
+        super().__init__()
+        self.use_residual = use_residual
+        
+        # Spatial mixing: depthwise convolution
+        self.depthwise_conv = nn.Conv2d(
+            feature_channels, feature_channels,
+            kernel_size=3, padding=1, groups=feature_channels,
+            bias=False
+        )
+        self.bn1 = nn.BatchNorm2d(feature_channels)
+        
+        # Channel mixing: pointwise convolution
+        self.pointwise_conv = nn.Conv2d(
+            feature_channels, feature_channels,
+            kernel_size=1, bias=False
+        )
+        self.bn2 = nn.BatchNorm2d(feature_channels)
+        
+        self.activation = nn.ReLU(inplace=True)
+        
+        self._initialize_weights()
+    
+    def _initialize_weights(self):
+        """
+        Initialize weights with He initialization for conv layers.
+        """
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+    
+    def forward(self, x):
+        identity = x
+        
+        # Spatial mixing
+        out = self.depthwise_conv(x)
+        out = self.bn1(out)
+        out = self.activation(out)
+        
+        # Channel mixing
+        out = self.pointwise_conv(out)
+        out = self.bn2(out)
+        
+        # Residual connection
+        if self.use_residual:
+            out = out + identity
+        
+        return self.activation(out)
