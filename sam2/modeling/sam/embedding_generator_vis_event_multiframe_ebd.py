@@ -96,6 +96,7 @@ def initialize_embedding_generator(module):
         nn.init.constant_(module.weight, 1)
         if module.bias is not None:
             nn.init.constant_(module.bias, 0)
+
 class TemporalFeatureAggregator(nn.Module):
     """
     Simple GRU-based aggregator that processes a sequence of future-frame features
@@ -154,6 +155,55 @@ class TemporalFeatureAggregator(nn.Module):
 
         return summary_vector
     
+class SpatialTemporalFeatureAggregator(nn.Module):
+    """
+    GRU-based aggregator that processes a sequence of future-frame features with spatial dimensions.
+    
+    Expected input shape: [B, T, S, F], where S = H*W (e.g. 4096 for 64x64) and F is feature dimension.
+    For each spatial location, the GRU aggregates its T time steps.
+    
+    Returns:
+        Aggregated features of shape [B, output_dim, H, W].
+    """
+    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int, spatial_size: Tuple[int, int]):
+        super().__init__()
+        self.spatial_size = spatial_size  # e.g., (64, 64)
+        self.gru = nn.GRU(input_dim, hidden_dim, batch_first=True)
+        self.out_fc = nn.Linear(hidden_dim, output_dim)
+        
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x shape: [S, T, B, F], where S should be H*W.
+        
+        S, T, B, F = x.shape
+        # print("x shape:", x.shape)
+        # Permute to bring spatial dimension (S) forward:
+        # New shape: [B, S, T, F] so that each spatial location has its own temporal sequence.
+        x = x.permute(0, 2, 1, 3).contiguous()
+        
+        # Merge B and S dimensions: [B * S, T, F]
+        x = x.view(B * S, T, F)
+        
+        # Run GRU: we only need the final hidden state for each sequence.
+        # hidden shape: [num_layers, B*S, hidden_dim]. We take the last layer.
+        _, hidden = self.gru(x)
+        final_hidden = hidden[-1]  # shape: [B * S, hidden_dim]
+        # print("final_hidden shape:", final_hidden.shape)
+        # Project to the desired output channels.
+        proj = self.out_fc(final_hidden)  # shape: [B * S, output_dim]
+        # print("proj shape:", proj.shape)
+        # Reshape back to [B, S, output_dim]
+        proj = proj.view(B, S, -1)
+        # print("proj shape:", proj.shape)
+        # Reshape S back to spatial dimensions: [B, H, W, output_dim]
+        H, W = self.spatial_size
+        # print("H, W, B:", H, W, B)
+        proj = proj.view(B, H, W, -1)
+        # print("proj shape:", proj.shape)
+        # Permute to [B, output_dim, H, W]
+        proj = proj.permute(0, 3, 1, 2).contiguous()
+        return proj
+
+
 
 class SimpleHighResFusion(nn.Module):
     def __init__(self, out_channels=256):
@@ -250,10 +300,11 @@ class EmbeddingGenerator(nn.Module):
             nn.Sigmoid()  # you can choose an activation that best fits your usage
         )
 
-        self.video_feature_rnn = TemporalFeatureAggregator(
-            input_dim=256,         # or adapt to your shape
-            hidden_dim=mask_in_chans,
-            output_dim=mask_in_chans
+        self.video_feature_rnn = SpatialTemporalFeatureAggregator(
+            input_dim=256,         # feature dimension per spatial location at each time step
+            hidden_dim=mask_in_chans,  # internal GRU hidden dimension
+            output_dim=mask_in_chans,  # desired output channels (1024)
+            spatial_size=image_embedding_size  # e.g., (64, 64)
         )
 
         # -------------------------------------------
@@ -338,30 +389,22 @@ class EmbeddingGenerator(nn.Module):
             fused_highres = self.highres_fusion_conv(feat, fused_highres)
 
         combined_features = backbone_processed + event_processed + fused_highres
-
+        # print("combined_features shape:", combined_features.shape)
         # 4. Use the RNN aggregator if cur_video is provided
         if cur_video is not None:
             vision_feats = cur_video.get("vision_feats", None)
             if vision_feats is not None and len(vision_feats) > 0:
-                # Suppose each item is [4096, 1, 256], stack them -> [N, 4096, 1, 256]
-                feats_stack = torch.stack(vision_feats, dim=0)
-                # Pass through the GRU aggregator
-                # aggregator will return something like [1, mask_in_chans, 1, 1]
-                future_summary = self.video_feature_rnn(feats_stack)
-                # Interpolate or expand to match combined_features shape
-                # e.g. if combined_features is [B, mask_in_chans, H, W],
-                # you can broadcast (or replicate) future_summary to match B,H,W.
-                if future_summary.shape[0] < combined_features.shape[0]:
-                    # For demonstration, just repeat for each batch element:
-                    future_summary = future_summary.repeat(combined_features.shape[0], 1, 1, 1)
-
-                # Now upsample to (H, W) if needed
-                future_summary = F.interpolate(
-                    future_summary, 
-                    size=combined_features.shape[-2:], 
-                    mode='bilinear', 
-                    align_corners=False
+                # Assume that each vision_feats entry is a tuple where the third element is a tensor
+                # of shape [B, 4096, 256]. We stack along a new time dimension.
+                feats_stack = torch.stack(
+                    [feat[2].unsqueeze(1) if feat[2].dim() == 2 else feat[2] for feat in vision_feats], dim=1
                 )
+                # Pass through the GRU aggregator.
+                # The aggregator will first average over the spatial dimension (4096) to obtain [B, T, 256]
+                # and then output a summary of shape [B, mask_in_chans, 1, 1] (mask_in_chans should be 256).
+                future_summary = self.video_feature_rnn(feats_stack)
+                
+                # Combine the future summary with the combined_features
                 combined_features += future_summary
 
         # 5. Attention
