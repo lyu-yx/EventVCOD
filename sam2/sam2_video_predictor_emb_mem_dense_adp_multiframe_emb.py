@@ -991,6 +991,8 @@ class SAM2VideoPredictor(SAM2Base):
         cur_video = {"vision_feats":[], "vision_pos_embeds":[], "vision_feats_event":[], "vision_pos_embeds_event":[]}
         
         video_len = inference_state["num_frames"]
+        # print("video_len", video_len)
+        # print("frame_idx", frame_idx)
         for i in range(self.num_frames_embedding):
             if frame_idx + i < video_len:
                 (
@@ -1008,12 +1010,31 @@ class SAM2VideoPredictor(SAM2Base):
                     current_vision_pos_embeds_event,
                     feat_sizes,
                 ) = self._get_event_feature(inference_state, frame_idx + i, batch_size)
+                # print("Type of current_vision_feats:", type(current_vision_feats))
+                # if isinstance(current_vision_feats, list):
+                #     print("current_vision_feats contains:")
+                #     for i, feat in enumerate(current_vision_feats):
+                #         print(f"  Element {i}: Type={type(feat)}, Shape={getattr(feat, 'shape', 'N/A')}")
+
             else:
                 # Create zero tensors for exceeding frames
-                current_vision_feats = torch.zeros_like(cur_video["vision_feats"][-1]) if cur_video["vision_feats"] else torch.zeros((batch_size, *feat_sizes))
-                current_vision_pos_embeds = torch.zeros_like(cur_video["vision_pos_embeds"][-1]) if cur_video["vision_pos_embeds"] else torch.zeros((batch_size, *feat_sizes))
-                current_vision_feats_event = torch.zeros_like(cur_video["vision_feats_event"][-1]) if cur_video["vision_feats_event"] else torch.zeros((batch_size, *feat_sizes))
-                current_vision_pos_embeds_event = torch.zeros_like(cur_video["vision_pos_embeds_event"][-1]) if cur_video["vision_pos_embeds_event"] else torch.zeros((batch_size, *feat_sizes))
+                # print("feat_sizes", feat_sizes)
+                # print("*feat_sizes", *feat_sizes)
+                # current_vision_feats = torch.zeros((batch_size, *feat_sizes))
+                # current_vision_pos_embeds = torch.zeros((batch_size, *feat_sizes))
+                # current_vision_feats_event = torch.zeros((batch_size, *feat_sizes))
+                # current_vision_pos_embeds_event = torch.zeros((batch_size, *feat_sizes))
+                
+                # Create zero tensors matching the structure
+                device = inference_state["device"]
+
+                # Create zero tensors matching the structure and move them to CUDA
+                current_vision_feats = [torch.zeros((h * w, 1, c), device=device) for (h, w), c in zip(feat_sizes, [32, 64, 256])]
+                current_vision_pos_embeds = [torch.zeros((h * w, 1, 256), device=device) for (h, w) in feat_sizes]
+
+                # Create zero tensors for the event features and move them to CUDA
+                current_vision_feats_event = [torch.zeros((h * w, 1, c), device=device) for (h, w), c in zip(feat_sizes, [32, 64, 256])]
+                current_vision_pos_embeds_event = [torch.zeros((h * w, 1, 256), device=device) for (h, w) in feat_sizes]
             
             cur_video["vision_feats"].append(current_vision_feats)
             cur_video["vision_pos_embeds"].append(current_vision_pos_embeds)

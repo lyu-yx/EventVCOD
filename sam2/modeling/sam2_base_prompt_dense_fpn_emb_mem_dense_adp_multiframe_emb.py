@@ -398,7 +398,7 @@ class SAM2Base(torch.nn.Module):
         # print('len high_res_event_features', len(high_res_event_features))
         # print('high_res_features', high_res_features[0].shape)
         # print('high_res_event_features', high_res_event_features[0].shape)
-        sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features, event_features, high_res_features, high_res_event_features)# a) Handle point prompts
+        sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features, event_features, high_res_features, high_res_event_features, cur_video)# a) Handle point prompts
 
         (
             low_res_multimasks,
