@@ -936,7 +936,7 @@ class SAM2Base(torch.nn.Module):
             )
 
         else:
-            pix_feat_vit_adp = pix_feat.permute(0, 2, 3, 1).reshape(-1, B, 256)
+            pix_feat_vit_adp = pix_feat_adp.permute(0, 2, 3, 1).reshape(-1, B, 256)
             pix_feat_event_vit_adp = pix_feat_event_adp.permute(0, 2, 3, 1).reshape(-1, B, 256)
 
             pix_feat, pix_feat_short_long = self._prepare_memory_conditioned_features(
