@@ -73,6 +73,37 @@ class EventAdaptor(nn.Module):
             adapted = adapted + x
         return adapted
 
+class MultiLevelEventAdaptor(nn.Module):
+    def __init__(self, in_channels_list, use_residual=True):
+        """
+        Adaptor for multiple FPN levels.
+        
+        Args:
+            in_channels_list (list): List of channel counts for each level
+            use_residual (bool): Whether to use residual connections
+        """
+        super().__init__()
+        
+        # Create separate adaptors for each level
+        self.adaptors = nn.ModuleList([
+            EventAdaptor(channels, use_residual)
+            for channels in in_channels_list
+        ])
+    
+    def forward(self, features):
+        """
+        Adapt features at each level.
+        
+        Args:
+            features (list): List of feature tensors from FPN levels
+        
+        Returns:
+            list: Adapted features maintaining original dimensions
+        """
+        return [
+            adaptor(feature)
+            for adaptor, feature in zip(self.adaptors, features)
+        ]
 
 class EventAdaptorAttention(nn.Module):
     def __init__(self, feature_channels, use_residual=True, use_attention=True, dropout_rate=0.1):
@@ -179,70 +210,6 @@ class EventAdaptorAttention(nn.Module):
         return x
 
 
-class MultiLevelEventAdaptor(nn.Module):
-    def __init__(self, in_channels_list, use_residual=True):
-        """
-        Adaptor for multiple FPN levels.
-        
-        Args:
-            in_channels_list (list): List of channel counts for each level
-            use_residual (bool): Whether to use residual connections
-        """
-        super().__init__()
-        
-        # Create separate adaptors for each level
-        self.adaptors = nn.ModuleList([
-            EventAdaptor(channels, use_residual)
-            for channels in in_channels_list
-        ])
-    
-    def forward(self, features):
-        """
-        Adapt features at each level.
-        
-        Args:
-            features (list): List of feature tensors from FPN levels
-        
-        Returns:
-            list: Adapted features maintaining original dimensions
-        """
-        return [
-            adaptor(feature)
-            for adaptor, feature in zip(self.adaptors, features)
-        ]
-
-class MultiLevelTinyEventAdaptor(nn.Module):
-    def __init__(self, in_channels_list, use_residual=True):
-        """
-        Adaptor for multiple FPN levels.
-        
-        Args:
-            in_channels_list (list): List of channel counts for each level
-            use_residual (bool): Whether to use residual connections
-        """
-        super().__init__()
-        
-        # Create separate adaptors for each level
-        self.adaptors = nn.ModuleList([
-            TinyEventAdaptor(channels, use_residual)
-            for channels in in_channels_list
-        ])
-    
-    def forward(self, features):
-        """
-        Adapt features at each level.
-        
-        Args:
-            features (list): List of feature tensors from FPN levels
-        
-        Returns:
-            list: Adapted features maintaining original dimensions
-        """
-        return [
-            adaptor(feature)
-            for adaptor, feature in zip(self.adaptors, features)
-        ]
-
 class MultiLevelEventAdaptorAttention(nn.Module):
     def __init__(self, in_channels_list, use_residual=True, use_attention=True, dropout_rate=0.1):
         """
@@ -274,57 +241,6 @@ class MultiLevelEventAdaptorAttention(nn.Module):
             adaptor(feature)
             for adaptor, feature in zip(self.adaptors, features)
         ]
-def event_adaptor(event_data):
-    """
-    Wrapper function for feature adaptation.
-    
-    Args:
-        event_data (Union[torch.Tensor, list]): Either a single tensor or list of FPN features
-        
-    Returns:
-        Union[torch.Tensor, list]: Adapted features maintaining input dimensions
-    """
-    # Handle both single tensor and list of features
-    if isinstance(event_data, list):
-        in_channels_list = [feat.shape[1] for feat in event_data]
-        adaptor = MultiLevelEventAdaptor(
-            in_channels_list=in_channels_list,
-            use_residual=True
-        ).to(event_data[0].device)
-        return adaptor(event_data)
-    else:
-        adaptor = EventAdaptor(
-            feature_channels=event_data.shape[1],
-            use_residual=True
-        ).to(event_data.device)
-        return adaptor(event_data)
-    
-
-def vis_adaptor(vis_data):
-    """
-    Wrapper function for feature adaptation.
-    
-    Args:
-        event_data (Union[torch.Tensor, list]): Either a single tensor or list of FPN features
-        
-    Returns:
-        Union[torch.Tensor, list]: Adapted features maintaining input dimensions
-    """
-    # Handle both single tensor and list of features
-    if isinstance(vis_data, list):
-        in_channels_list = [feat.shape[1] for feat in vis_data]
-        adaptor = MultiLevelEventAdaptor(
-            in_channels_list=in_channels_list,
-            use_residual=True
-        ).to(vis_data[0].device)
-        return adaptor(vis_data)
-    else:
-        adaptor = EventAdaptor(
-            feature_channels=vis_data.shape[1],
-            use_residual=True
-        ).to(vis_data.device)
-        return adaptor(vis_data)
-    
 
 class TinyEventAdaptor(nn.Module):
     def __init__(self, feature_channels, use_residual=True):
@@ -385,3 +301,88 @@ class TinyEventAdaptor(nn.Module):
             out = out + identity
         
         return self.activation(out)
+
+
+class MultiLevelTinyEventAdaptor(nn.Module):
+    def __init__(self, in_channels_list, use_residual=True):
+        """
+        Adaptor for multiple FPN levels.
+        
+        Args:
+            in_channels_list (list): List of channel counts for each level
+            use_residual (bool): Whether to use residual connections
+        """
+        super().__init__()
+        
+        # Create separate adaptors for each level
+        self.adaptors = nn.ModuleList([
+            TinyEventAdaptor(channels, use_residual)
+            for channels in in_channels_list
+        ])
+    
+    def forward(self, features):
+        """
+        Adapt features at each level.
+        
+        Args:
+            features (list): List of feature tensors from FPN levels
+        
+        Returns:
+            list: Adapted features maintaining original dimensions
+        """
+        return [
+            adaptor(feature)
+            for adaptor, feature in zip(self.adaptors, features)
+        ]
+
+
+# def event_adaptor(event_data):
+#     """
+#     Wrapper function for feature adaptation.
+    
+#     Args:
+#         event_data (Union[torch.Tensor, list]): Either a single tensor or list of FPN features
+        
+#     Returns:
+#         Union[torch.Tensor, list]: Adapted features maintaining input dimensions
+#     """
+#     # Handle both single tensor and list of features
+#     if isinstance(event_data, list):
+#         in_channels_list = [feat.shape[1] for feat in event_data]
+#         adaptor = MultiLevelEventAdaptor(
+#             in_channels_list=in_channels_list,
+#             use_residual=True
+#         ).to(event_data[0].device)
+#         return adaptor(event_data)
+#     else:
+#         adaptor = EventAdaptor(
+#             feature_channels=event_data.shape[1],
+#             use_residual=True
+#         ).to(event_data.device)
+#         return adaptor(event_data)
+    
+
+# def vis_adaptor(vis_data):
+#     """
+#     Wrapper function for feature adaptation.
+    
+#     Args:
+#         event_data (Union[torch.Tensor, list]): Either a single tensor or list of FPN features
+        
+#     Returns:
+#         Union[torch.Tensor, list]: Adapted features maintaining input dimensions
+#     """
+#     # Handle both single tensor and list of features
+#     if isinstance(vis_data, list):
+#         in_channels_list = [feat.shape[1] for feat in vis_data]
+#         adaptor = MultiLevelEventAdaptor(
+#             in_channels_list=in_channels_list,
+#             use_residual=True
+#         ).to(vis_data[0].device)
+#         return adaptor(vis_data)
+#     else:
+#         adaptor = EventAdaptor(
+#             feature_channels=vis_data.shape[1],
+#             use_residual=True
+#         ).to(vis_data.device)
+#         return adaptor(vis_data)
