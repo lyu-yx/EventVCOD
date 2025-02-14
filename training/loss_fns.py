@@ -48,63 +48,67 @@ def dice_loss(inputs, targets, num_objects, loss_on_multimask=False):
         return loss / num_objects
     return loss.sum() / num_objects
 
-def structure_loss(pred, targets, num_objects=1, loss_on_multimask=True, frame_idx=None):
+def structure_loss(pred, targets, num_objects=1, loss_on_multimask=True):
     """
     Structure loss (ref: F3Net-AAAI-2020)
 
     Args:
-        pred: A float tensor of shape [B, 1, H, W] (e.g. [1, 1, 1024, 1024] for a single frame).
-        targets: A float tensor of shape either:
-                 - [B, 1, H, W] if the loss is computed per frame, or 
-                 - [T, 1, H, W] where T is the number of frames (e.g. [8, 1, 1024, 1024]).
+        pred: Either a tensor of shape [B, 1, H, W] or a list of dictionaries.
+              If it's a list, each element should be a dict containing the key
+              'pred_masks_high_res' with a tensor of shape [1, 1, H, W].
+        targets: A float tensor with shape [T, 1, H, W], where T is the number of frames.
         num_objects: A scaling factor for the loss.
         loss_on_multimask: If True, the final loss is unsqueezed to [num_objects, 1] for consistency.
-        frame_idx: (Optional) If targets has multiple frames (T != B), specify which frame index to use.
-                   For example, if pred is for a single frame and targets is [8, 1, H, W],
-                   passing frame_idx=3 will use targets[3].
-
+    
     Returns:
-        structure_loss: The computed structure loss.
+        structure_loss: The computed structure loss (averaged over frames if multiple frames).
     """
-    # If targets has more frames than pred, select the correct frame
-    if frame_idx is not None:
-        # targets[frame_idx] has shape [1, H, W] so we add a batch dimension.
-        targets = targets[frame_idx].unsqueeze(0)
-    else:
-        # If no frame index is provided and shapes don't match, try to auto-match:
-        if pred.shape[0] != targets.shape[0]:
-            if targets.shape[0] > 1 and pred.shape[0] == 1:
-                # Default to the first frame if no index is provided
-                targets = targets[0].unsqueeze(0)
+    
+    def compute_loss(p, t):
+        # Ensure t is float for pooling and arithmetic operations
+        t = t.float()
+        # Compute weight map
+        weit = 1 + 5 * torch.abs(
+            F.avg_pool2d(t, kernel_size=31, stride=1, padding=15) - t
+        )
+        # Compute weighted binary cross-entropy loss
+        wbce = F.binary_cross_entropy_with_logits(p, t, reduction='none')
+        wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
+        # Compute weighted IoU loss
+        p_sigmoid = torch.sigmoid(p)
+        inter = ((p_sigmoid * t) * weit).sum(dim=(2, 3))
+        union = ((p_sigmoid + t) * weit).sum(dim=(2, 3))
+        wiou = 1 - (inter + 1) / (union - inter + 1)
+        loss_val = (wbce + wiou).mean() / num_objects
+        
+        if loss_on_multimask:
+            loss_val = loss_val.unsqueeze(0).unsqueeze(1)
+        return loss_val
+
+    # Case 1: pred is a list (of dicts), one per frame
+    if isinstance(pred, list):
+        losses = []
+        for i, pred_dict in enumerate(pred):
+            # Extract the prediction tensor for this frame
+            p = pred_dict['pred_masks_high_res']  # shape: [1, 1, 1024, 1024]
+            # Select the corresponding target frame.
+            # If there are fewer targets than predictions, default to the first target.
+            if i < targets.shape[0]:
+                t = targets[i].unsqueeze(0)  # shape becomes [1, 1, 1024, 1024]
             else:
-                raise ValueError("Batch size of pred and targets do not match. "
-                                 "Please provide the correct frame_idx.")
+                t = targets[0].unsqueeze(0)
+            loss_i = compute_loss(p, t)
+            losses.append(loss_i)
+        # Average loss over all frames
+        final_loss = sum(losses) / len(losses)
+        return final_loss
 
-    # Ensure targets are float (needed for avg_pool2d and arithmetic)
-    targets = targets.float()
-    
-    # Compute the weight map as in the F3Net paper
-    weit = 1 + 5 * torch.abs(
-        F.avg_pool2d(targets, kernel_size=31, stride=1, padding=15) - targets
-    )
-    
-    # Compute weighted binary cross-entropy loss
-    wbce = F.binary_cross_entropy_with_logits(pred, targets, reduction='none')
-    wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
-    
-    # Compute the weighted IoU loss
-    pred_sigmoid = torch.sigmoid(pred)
-    inter = ((pred_sigmoid * targets) * weit).sum(dim=(2, 3))
-    union = ((pred_sigmoid + targets) * weit).sum(dim=(2, 3))
-    wiou = 1 - (inter + 1) / (union - inter + 1)
-    
-    loss_val = (wbce + wiou).mean() / num_objects
-
-    # Optionally unsqueeze to maintain a consistent shape (e.g. [num_objects, 1])
-    if loss_on_multimask:
-        loss_val = loss_val.unsqueeze(0).unsqueeze(1)
-    
-    return loss_val
+    # Case 2: pred is a tensor
+    else:
+        # If batch sizes differ, try to match by taking the first frame from targets.
+        if pred.shape[0] != targets.shape[0]:
+            targets = targets[0].unsqueeze(0)
+        return compute_loss(pred, targets)
 
 def sigmoid_focal_loss(
     inputs,

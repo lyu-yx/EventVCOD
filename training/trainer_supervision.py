@@ -938,10 +938,8 @@ class Trainer:
                 raise FloatingPointError(error_msg)
             else:
                 return
-        print('embedding_loss', embedding_loss)
-        print('loss', loss)
-        print('structure_loss', structure_loss)
-        loss = embedding_loss * 10 +  structure_loss * 10 + loss
+
+        loss = embedding_loss * 5 +  structure_loss * 5 + loss
 
         self.scaler.scale(loss).backward()
         loss_mts[loss_key].update(loss.item(), batch_size)
