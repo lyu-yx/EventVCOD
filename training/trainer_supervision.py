@@ -53,6 +53,7 @@ from training.utils.train_utils import (
     setup_distributed_backend,
 )
 
+from training.loss_fns import structure_loss
 
 
 CORE_LOSS_KEY = "core_loss"
@@ -509,6 +510,9 @@ class Trainer:
         targets = batch.masks
         batch_size = len(batch.img_batch)
 
+        # structure loss
+        structure_loss_v = structure_loss(outputs, targets)
+
         key = batch.dict_key  # key for dataset
         loss = self.loss[key](outputs, targets)
         loss_str = f"Losses/{phase}_{key}_loss"
@@ -534,7 +538,7 @@ class Trainer:
 
         self.steps[phase] += 1
 
-        ret_tuple = {loss_str: loss}, batch_size, step_losses, embedding_loss
+        ret_tuple = {loss_str: loss}, batch_size, step_losses, embedding_loss, structure_loss_v
 
         if phase in self.meters and key in self.meters[phase]:
             meters_dict = self.meters[phase][key]
@@ -688,7 +692,7 @@ class Trainer:
                     ),
                 ):
                     for phase, model in zip(curr_phases, curr_models):
-                        loss_dict, batch_size, extra_losses, embedding_loss = self._step(
+                        loss_dict, batch_size, extra_losses, _, _ = self._step(
                             batch,
                             model,
                             phase,
@@ -918,7 +922,7 @@ class Trainer:
             enabled=self.optim_conf.amp.enabled,
             dtype=get_amp_type(self.optim_conf.amp.amp_dtype),
         ):
-            loss_dict, batch_size, extra_losses, embedding_loss = self._step(
+            loss_dict, batch_size, extra_losses, embedding_loss, structure_loss = self._step(
                 batch,
                 self.model,
                 phase,
@@ -934,7 +938,9 @@ class Trainer:
                 raise FloatingPointError(error_msg)
             else:
                 return
-
+        print('embedding_loss', embedding_loss)
+        print('loss', loss)
+        print('structure_loss', structure_loss)
         loss = embedding_loss * 10 + loss
 
         self.scaler.scale(loss).backward()

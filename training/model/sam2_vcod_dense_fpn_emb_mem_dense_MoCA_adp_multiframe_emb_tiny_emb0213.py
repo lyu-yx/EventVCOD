@@ -373,6 +373,9 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         
         # for video: processing_order [0, 1, 2, 3, 4, 5, 6, 7]
         # for img: processing_order [0]
+        print("vision_feats[0] shape", vision_feats[0].shape)
+        for x in vision_feats:
+            print(x.shape)
 
         output_dict = {
             "cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
@@ -393,30 +396,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 current_vision_feats_event = [x[:, img_ids] for x in vision_feats_event]
                 current_vision_pos_embeds_event = [x[:, img_ids] for x in vision_pos_embeds_event]
             
-                if stage_id + self.num_frames_embedding < video_len:
-                    for i in range(self.num_frames_embedding):
-                        cur_video["vision_feats"].append([x[:, img_ids + i + 1] for x in vision_feats])
-                        cur_video["vision_pos_embeds"].append([x[:, img_ids + i + 1] for x in vision_pos_embeds])
-                        cur_video["vision_feats_event"].append([x[:, img_ids + i + 1] for x in vision_feats_event])
-                        cur_video["vision_pos_embeds_event"].append([x[:, img_ids + i + 1] for x in vision_pos_embeds_event])
-                else:
-                    for i in range(self.num_frames_embedding):
-                        if img_ids + i + 1 < video_len:
-                            cur_video["vision_feats"].append([x[:, img_ids + i + 1] for x in vision_feats])
-                            cur_video["vision_pos_embeds"].append([x[:, img_ids + i + 1] for x in vision_pos_embeds])
-                            cur_video["vision_feats_event"].append([x[:, img_ids + i + 1] for x in vision_feats_event])
-                            cur_video["vision_pos_embeds_event"].append([x[:, img_ids + i + 1] for x in vision_pos_embeds_event])
-                        else:
-                            # Append zeros for exceeding part
-                            zero_feat = [torch.zeros_like(x[:, 0]) for x in vision_feats]
-                            zero_pos_embed = [torch.zeros_like(x[:, 0]) for x in vision_pos_embeds]
-                            zero_feat_event = [torch.zeros_like(x[:, 0]) for x in vision_feats_event]
-                            zero_pos_embed_event = [torch.zeros_like(x[:, 0]) for x in vision_pos_embeds_event]
-
-                            cur_video["vision_feats"].append(zero_feat)
-                            cur_video["vision_pos_embeds"].append(zero_pos_embed)
-                            cur_video["vision_feats_event"].append(zero_feat_event)
-                            cur_video["vision_pos_embeds_event"].append(zero_pos_embed_event)
+                
             else:
                 # Otherwise, compute the image features on the fly for the given img_ids
                 # (this might be used for evaluation on long videos to avoid backbone OOM).
@@ -431,7 +411,31 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 ) = self._prepare_backbone_features_per_frame(
                     input.flat_img_batch, input.flat_event_batch, img_ids
                 )
-            
+
+            if stage_id + self.num_frames_embedding < video_len:
+                    for i in range(self.num_frames_embedding):
+                        cur_video["vision_feats"].append([x[:, img_ids + i + 1] for x in vision_feats])
+                        cur_video["vision_pos_embeds"].append([x[:, img_ids + i + 1] for x in vision_pos_embeds])
+                        cur_video["vision_feats_event"].append([x[:, img_ids + i + 1] for x in vision_feats_event])
+                        cur_video["vision_pos_embeds_event"].append([x[:, img_ids + i + 1] for x in vision_pos_embeds_event])
+            else:
+                for i in range(self.num_frames_embedding):
+                    if img_ids + i + 1 < video_len:
+                        cur_video["vision_feats"].append([x[:, img_ids + i + 1] for x in vision_feats])
+                        cur_video["vision_pos_embeds"].append([x[:, img_ids + i + 1] for x in vision_pos_embeds])
+                        cur_video["vision_feats_event"].append([x[:, img_ids + i + 1] for x in vision_feats_event])
+                        cur_video["vision_pos_embeds_event"].append([x[:, img_ids + i + 1] for x in vision_pos_embeds_event])
+                    else:
+                        # Append zeros for exceeding part
+                        zero_feat = [torch.zeros_like(x[:, 0]) for x in vision_feats]
+                        zero_pos_embed = [torch.zeros_like(x[:, 0]) for x in vision_pos_embeds]
+                        zero_feat_event = [torch.zeros_like(x[:, 0]) for x in vision_feats_event]
+                        zero_pos_embed_event = [torch.zeros_like(x[:, 0]) for x in vision_pos_embeds_event]
+
+                        cur_video["vision_feats"].append(zero_feat)
+                        cur_video["vision_pos_embeds"].append(zero_pos_embed)
+                        cur_video["vision_feats_event"].append(zero_feat_event)
+                        cur_video["vision_pos_embeds_event"].append(zero_pos_embed_event)
 
             # Get output masks based on this frame's prompts and previous memory
             current_out, embedding_loss = self.track_step(
