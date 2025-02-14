@@ -373,9 +373,9 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         
         # for video: processing_order [0, 1, 2, 3, 4, 5, 6, 7]
         # for img: processing_order [0]
-        print("vision_feats[0] shape", vision_feats[0].shape)
-        for x in vision_feats:
-            print(x.shape)
+        # print("vision_feats[0] shape", vision_feats[0].shape)
+        # for x in vision_feats:
+        #     print(x.shape)
 
         output_dict = {
             "cond_frame_outputs": {},  # dict containing {frame_idx: <out>}

@@ -60,7 +60,7 @@ def structure_loss(pred, targets, num_objects=1, loss_on_multimask=True):
     Returns:
         Structure loss tensor
     """
-    weit = 1 + 5 * torch.abs(F.avg_pool2d(targets, kernel_size=31, stride=1, padding=15) - targets)
+    weit = 1 + 5 * torch.abs(F.avg_pool2d(targets.float(), kernel_size=31, stride=1, padding=15) - targets.float())
     wbce = F.binary_cross_entropy_with_logits(pred, targets, reduce='none')
     wbce = (weit * wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
 
