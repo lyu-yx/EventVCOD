@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as F  # We'll use this for interpolation
 from typing import List, Tuple, Dict, Any, Optional, Type
 
 # -----------------------------
@@ -27,7 +27,7 @@ class ChannelAttention(nn.Module):
 class SpatialAttention(nn.Module):
     def __init__(self, kernel_size: int = 7):
         super().__init__()
-        self.conv = nn.Conv2d(2, 1, kernel_size, padding=kernel_size//2)
+        self.conv = nn.Conv2d(2, 1, kernel_size, padding=kernel_size // 2)
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         avg_out = torch.mean(x, dim=1, keepdim=True)
@@ -68,7 +68,7 @@ class PyramidPooling(nn.Module):
 class PositionEmbeddingRandom(nn.Module):
     """
     A stub positional embedding layer.
-    Replace with a more deterministic variant (e.g., sinusoidal) as needed.
+    Replace with a deterministic variant (e.g., sinusoidal) as needed.
     """
     def __init__(self, num_pos_feats: int = 64):
         super().__init__()
@@ -94,7 +94,7 @@ def initialize_embedding_generator(module: nn.Module) -> None:
             nn.init.constant_(module.bias, 0)
 
 # ---------------------------------------------------------
-# New: Transformer-based Video Feature Aggregator Module
+# Transformer-based Video Feature Aggregator Module (Memory-Optimized)
 # ---------------------------------------------------------
 class VideoFeatureTransformerAggregator(nn.Module):
     """
@@ -102,23 +102,36 @@ class VideoFeatureTransformerAggregator(nn.Module):
     Expected input shape: [B, T, S, F] where S = H * W (spatial positions).
     The transformer processes the temporal sequence for each spatial location,
     and outputs a summary feature map of shape [B, F, H, W].
+
+    Memory optimizations:
+      - Reduced number of layers (default 1)
+      - Reduced number of heads (default 4)
+      - Smaller feed-forward dimension (default input_dim * 2)
+      - Zero dropout in the encoder layer
+      - AMP autocasting during the transformer forward pass
     """
     def __init__(
         self,
         input_dim: int,
-        num_layers: int,
-        num_heads: int,
-        hidden_dim: int,
-        spatial_size: Tuple[int, int],
+        num_layers: int = 1,       # Reduced from 2
+        num_heads: int = 4,        # Reduced from 8
+        hidden_dim: Optional[int] = None,  # Set to input_dim * 2 if not provided
+        spatial_size: Tuple[int, int] = (64, 64),
         max_T: int = 10  # maximum expected number of frames
     ):
         super().__init__()
         self.spatial_size = spatial_size
         self.max_T = max_T
-        # Learnable positional encoding for temporal dimension.
+        if hidden_dim is None:
+            hidden_dim = input_dim * 2  # Reduced feed-forward dimension
+        # Learnable positional encoding for the temporal dimension.
         self.pos_encoding = nn.Parameter(torch.randn(1, max_T, input_dim))
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=input_dim, nhead=num_heads, dim_feedforward=hidden_dim, batch_first=True
+            d_model=input_dim, 
+            nhead=num_heads, 
+            dim_feedforward=hidden_dim, 
+            batch_first=True,
+            dropout=0.0  # Disable dropout to reduce memory usage
         )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.proj = nn.Linear(input_dim, input_dim)
@@ -131,24 +144,26 @@ class VideoFeatureTransformerAggregator(nn.Module):
             Aggregated feature map of shape [B, F, H, W].
         """
         B, T, S, F = x.shape
-        # Rearrange: for each spatial location, treat the T frames as a sequence.
-        x = x.permute(0, 2, 1, 3).contiguous()  # shape: [B, S, T, F]
+        # Rearrange: treat T frames per spatial location as a sequence.
+        x = x.permute(0, 2, 1, 3).contiguous()  # [B, S, T, F]
         x = x.view(B * S, T, F)
-        # If the temporal length T differs from max_T, interpolate the pos encoding.
+        # Interpolate positional encoding if T != max_T.
         if T != self.max_T:
-            pos_enc = F.interpolate(self.pos_encoding.transpose(1, 2), size=T, mode='linear', align_corners=False).transpose(1, 2)
+            pos_enc = torch.nn.functional.interpolate(
+                self.pos_encoding.transpose(1, 2), size=T, mode='linear', align_corners=False
+            ).transpose(1, 2)
         else:
             pos_enc = self.pos_encoding
         x = x + pos_enc.repeat(B * S, 1, 1)
-        out = self.transformer_encoder(x)  # shape: [B*S, T, F]
-        # Aggregate over time (e.g., by mean pooling)
-        out = out.mean(dim=1)  # [B*S, F]
-        out = self.proj(out)   # [B*S, F]
+        # Use AMP autocasting to lower memory usage during transformer computation.
+        with torch.cuda.amp.autocast(enabled=True):
+            out = self.transformer_encoder(x)  # [B*S, T, F]
+        out = out.mean(dim=1)  # Aggregate over time -> [B*S, F]
+        out = self.proj(out)
         out = out.view(B, S, F)
         H, W = self.spatial_size
         out = out.view(B, H, W, F).permute(0, 3, 1, 2).contiguous()  # [B, F, H, W]
         return out
-
 
 class SimpleHighResFusion(nn.Module):
     def __init__(self, out_channels: int = 256):
@@ -185,6 +200,10 @@ class EmbeddingGenerator(nn.Module):
       2. Fuses high-resolution features.
       3. Incorporates future-frame features using a Transformer-based aggregator.
       4. Produces both sparse and dense embeddings.
+      
+    For cur_video["vision_feats"], we now assume each entry is a list/tuple of 3 feature levels.
+    We only use the lower-level feature (index 2) from each frame, which has shape [S, 1, C] or [B, S, C].
+    We then stack these across time (T=3) to obtain a tensor of shape [B, T, S, C].
     """
     def __init__(
         self,
@@ -220,11 +239,11 @@ class EmbeddingGenerator(nn.Module):
         # 3. Transformer-based aggregator for video features.
         self.video_feature_transformer = VideoFeatureTransformerAggregator(
             input_dim=256,
-            num_layers=2,
-            num_heads=8,
-            hidden_dim=mask_in_chans * 4,
+            num_layers=1,            # Reduced number of layers
+            num_heads=4,             # Reduced number of heads
+            hidden_dim=mask_in_chans * 2,  # Reduced feed-forward dimension
             spatial_size=image_embedding_size,
-            max_T=10  # Adjust according to your expected maximum number of future frames.
+            max_T=10  # Adjust as needed based on expected max number of future frames.
         )
 
         # 4. Attention modules
@@ -282,8 +301,9 @@ class EmbeddingGenerator(nn.Module):
             event_features: [B, mask_in_chans, H, W]
             high_res_features: List of tensors (e.g., [B, 32, 256, 256], [B, 64, 128, 128])
             high_res_event_features: List of tensors with the same structure.
-            cur_video: Optional dict with keys (e.g., "vision_feats") holding future-frame features.
-                       Each entry is expected to yield a tensor of shape [B, seq_len, 256] or similar.
+            cur_video: Optional dict with key "vision_feats" containing a list of frames.
+                       Each frame is a list/tuple of 3 features; we use the lower-level one (index 2)
+                       which is expected to have shape [S, 1, C] or [B, S, C].
         Returns:
             sparse_embeddings: [B, (H*W), embed_dim] after flattening.
             dense_embeddings:  [B, embed_dim, H, W]
@@ -303,22 +323,24 @@ class EmbeddingGenerator(nn.Module):
         # Combine all features.
         combined_features = backbone_processed + event_processed + fused_highres
 
-        # Incorporate video features if provided using the Transformer aggregator.
+        # Incorporate video features using the Transformer aggregator.
         if cur_video is not None:
             vision_feats = cur_video.get("vision_feats", None)
             if vision_feats is not None and len(vision_feats) > 0:
-                # Here we assume each entry is either a dict with key "feature" or a tuple (index 2 holds the feature).
-                if isinstance(vision_feats[0], dict) and "feature" in vision_feats[0]:
-                    feats_stack = torch.stack(
-                        [feat["feature"].unsqueeze(1) for feat in vision_feats],
-                        dim=1
-                    )
-                else:
-                    feats_stack = torch.stack(
-                        [feat[2].unsqueeze(1) if feat[2].dim() == 2 else feat[2] for feat in vision_feats],
-                        dim=1
-                    )
-                # Expecting feats_stack shape: [B, T, 4096, 256]. (Assuming H*W == 4096.)
+                # For each frame, use the lower-level feature (index 2).
+                # Expected shape: [S, 1, C] or [B, S, C]. We squeeze the singleton dim if needed.
+                feats_list = []
+                for feat in vision_feats:
+                    lower_feat = feat[2]  # Use the lower-level feature
+                    if lower_feat.dim() == 3 and lower_feat.shape[1] == 1:
+                        lower_feat = lower_feat.squeeze(1)  # becomes [S, C]
+                    if lower_feat.dim() == 2:
+                        lower_feat = lower_feat.unsqueeze(0)  # becomes [1, S, C]
+                    # Now lower_feat should be [B, S, C]. Add a temporal dimension.
+                    lower_feat = lower_feat.unsqueeze(1)  # now [B, 1, S, C]
+                    feats_list.append(lower_feat)
+                # Stack along the temporal dimension; T should be 3.
+                feats_stack = torch.cat(feats_list, dim=1)  # [B, T, S, C]
                 future_summary = self.video_feature_transformer(feats_stack)
                 combined_features += future_summary
 

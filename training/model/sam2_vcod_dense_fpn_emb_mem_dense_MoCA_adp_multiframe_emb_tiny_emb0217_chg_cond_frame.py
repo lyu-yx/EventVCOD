@@ -438,6 +438,14 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                         cur_video["vision_pos_embeds_event"].append(zero_pos_embed_event)
 
             # Get output masks based on this frame's prompts and previous memory
+            # print current video shape of all
+
+            # print('cur_video["vision_feats"][0][0].shape', cur_video["vision_feats"][0][0].shape)
+            # print('cur_video["vision_feats"][0][1].shape', cur_video["vision_feats"][0][1].shape)
+            # print('cur_video["vision_feats"][0][2].shape', cur_video["vision_feats"][0][2].shape)
+            # print('cur_video["vision_feats"][1][0].shape', cur_video["vision_feats"][1][0].shape)
+            # print('cur_video["vision_feats"][2][0].shape', cur_video["vision_feats"][2][0].shape)
+
             current_out, embedding_loss = self.track_step(
                 frame_idx=stage_id,
                 is_init_cond_frame=stage_id in init_cond_frames,
