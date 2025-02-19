@@ -60,7 +60,7 @@ trainer:
   seed_value: 123
 
   model:
-    _target_: training.model.sam2_vcod_dense_fpn_emb_mem_dense_MoCA_adp_multiframe_emb_tiny_emb0218_sparse.SAM2TrainVCODPromptGenerator
+    _target_: training.model.sam2_vcod_dense_fpn_emb_mem_dense_MoCA_adp_multiframe_emb_tiny_emb0218_sparse2.SAM2TrainVCODPromptGenerator
     image_encoder:
       _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
       scalp: 1
@@ -377,7 +377,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_multiframe_emb_tiny_adp0218_sparse/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_multiframe_emb_tiny_adp0218_sparse2/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
