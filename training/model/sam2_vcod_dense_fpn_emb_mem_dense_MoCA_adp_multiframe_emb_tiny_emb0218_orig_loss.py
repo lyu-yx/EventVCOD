@@ -9,7 +9,7 @@ import logging
 import numpy as np
 import torch
 import torch.distributed
-from sam2.modeling.sam2_base_prompt_dense_fpn_emb_mem_dense_adp_multiframe_tiny_adp0218_sparse import SAM2Base
+from sam2.modeling.sam2_base_prompt_dense_fpn_emb_mem_dense_adp_multiframe_tiny_adp0218_orig_loss import SAM2Base
 from sam2.modeling.sam2_utils import (
     get_1d_sine_pe,
     get_next_point,
