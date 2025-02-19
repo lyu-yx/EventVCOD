@@ -60,7 +60,7 @@ trainer:
   seed_value: 123
 
   model:
-    _target_: training.model.sam2_vcod_dense_fpn_emb_mem_dense_MoCA_adp_multiframe_emb_tiny_emb0217_chg_cond_frame.SAM2TrainVCODPromptGenerator
+    _target_: training.model.sam2_vcod_dense_fpn_emb_mem_dense_MoCA_adp_multiframe_emb_tiny_emb0218_sparse.SAM2TrainVCODPromptGenerator
     image_encoder:
       _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
       scalp: 1
@@ -201,7 +201,7 @@ trainer:
     pred_obj_scores_mlp: true
     fixed_no_obj_ptr: false
     # multimask tracking settings
-    multimask_output_for_tracking: true
+    multimask_output_for_tracking: false
     use_multimask_token_for_obj_ptr: true
     multimask_min_pt_num: 0
     multimask_max_pt_num: 1
@@ -211,19 +211,19 @@ trainer:
 
     ####### Training specific params #######
     # box/point input and corrections
-    prob_to_use_pt_input_for_train: 0.0
-    prob_to_use_pt_input_for_eval: 0.0
-    prob_to_use_box_input_for_train: 0.0  # 0.5*0.5 = 0.25 prob to use box instead of points
-    prob_to_use_box_input_for_eval: 0.0
+    prob_to_use_pt_input_for_train: 1.0
+    prob_to_use_pt_input_for_eval: 1.0
+    prob_to_use_box_input_for_train: 0.5  # 0.5*0.5 = 0.25 prob to use box instead of points
+    prob_to_use_box_input_for_eval: 0.5
     prob_to_sample_from_gt_for_train: 0  # with a small prob, sampling correction points from GT mask instead of prediction errors
     num_frames_to_correct_for_train: 1  # iteratively sample on random 1~2 frames (always include the first frame)
     num_frames_to_correct_for_eval: 1  # only iteratively sample on first frame
-    rand_frames_to_correct_for_train: True  # random #init-cond-frame ~ 2
-    add_all_frames_to_correct_as_cond: True  # when a frame receives a correction click, it becomes a conditioning frame (even if it's not initially a conditioning frame)
+    rand_frames_to_correct_for_train: False  # random #init-cond-frame ~ 2
+    add_all_frames_to_correct_as_cond: False  # when a frame receives a correction click, it becomes a conditioning frame (even if it's not initially a conditioning frame)
     # maximum 2 initial conditioning frames
     num_init_cond_frames_for_train: 1
     rand_init_cond_frames_for_train: True  # random 1~2
-    num_correction_pt_per_frame: 7
+    num_correction_pt_per_frame: 10
     use_act_ckpt_iterative_pt_sampling: false
     
 
@@ -334,7 +334,7 @@ trainer:
     all:
       _target_: training.loss_fns.MultiStepMultiMasksAndIous
       weight_dict:
-        loss_mask: 30
+        loss_mask: 20
         loss_struc: 1
         loss_dice: 1
         loss_iou: 1
@@ -377,7 +377,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_multiframe_emb_tiny_adp0217_chg_cond_frame/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_fpn_emb_mem_maskasout_dense_multiframe_emb_tiny_adp0218_sparse/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
