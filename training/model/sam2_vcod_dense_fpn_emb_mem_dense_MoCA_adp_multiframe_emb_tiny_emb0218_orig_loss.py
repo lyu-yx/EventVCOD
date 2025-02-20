@@ -382,10 +382,11 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             "non_cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
         }
 
-        cur_video = {"vision_feats":[], "vision_pos_embeds":[], "vision_feats_event":[], "vision_pos_embeds_event":[]}
+        
         video_len = len(processing_order)
         
         for stage_id in processing_order:
+            cur_video = {"vision_feats":[], "vision_pos_embeds":[], "vision_feats_event":[], "vision_pos_embeds_event":[]}
             # Get the image features for the current frames
             # img_ids = input.find_inputs[stage_id].img_ids
             img_ids = input.flat_obj_to_img_idx[stage_id]

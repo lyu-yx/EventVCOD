@@ -266,11 +266,11 @@ class SAM2Base(torch.nn.Module):
         self.pix_feat_event_adp = TinyEventAdaptor(256, use_residual=True)
 
 
-        self.pix_feat_adp_m = TinyEventAdaptor(64, use_residual=True)
-        self.pix_feat_event_adp_m = TinyEventAdaptor(64, use_residual=True)
+        # self.pix_feat_adp_m = TinyEventAdaptor(64, use_residual=True)
+        # self.pix_feat_event_adp_m = TinyEventAdaptor(64, use_residual=True)
 
-        self.pix_feat_adp_h = TinyEventAdaptor(32, use_residual=True)
-        self.pix_feat_event_adp_h = TinyEventAdaptor(32, use_residual=True)
+        # self.pix_feat_adp_h = TinyEventAdaptor(32, use_residual=True)
+        # self.pix_feat_event_adp_h = TinyEventAdaptor(32, use_residual=True)
 
 
         self.embedding_generator.apply(initialize_embedding_generator)
@@ -936,14 +936,24 @@ class SAM2Base(torch.nn.Module):
 
         for sec in range(len(cur_video["vision_feats"])):
             # Process the standard vision features:
-            cur_video["vision_feats"][sec][0] = self.pix_feat_adp(cur_video["vision_feats"][sec][0])
-            cur_video["vision_feats"][sec][1] = self.pix_feat_adp_m(cur_video["vision_feats"][sec][1])
-            cur_video["vision_feats"][sec][2] = self.pix_feat_adp_h(cur_video["vision_feats"][sec][2])
+            print('cur_video["vision_feats"][sec][2].shape', sec, cur_video["vision_feats"][sec][2].shape)
             
+            F, B, C = cur_video["vision_feats"][sec][2].shape
+            cur_ = cur_video["vision_feats"][sec][2].permute(1, 2, 0)
+            cur_ = cur_.view(-1, self.hidden_dim, *feat_sizes[-1])
+            cur_video["vision_feats"][sec][2] = self.pix_feat_adp(cur_).view(F, B, C)
+
+            # print('cur_video["vision_feats"][sec][0].shape', cur_video["vision_feats"][sec][0].shape)
+            # print('cur_video["vision_feats"][sec][1].shape', cur_video["vision_feats"][sec][1].shape)
+
+
             # Process the vision feature events:
-            cur_video["vision_feats_event"][sec][0] = self.pix_feat_event_adp(cur_video["vision_feats_event"][sec][0])
-            cur_video["vision_feats_event"][sec][1] = self.pix_feat_event_adp_m(cur_video["vision_feats_event"][sec][1])
-            cur_video["vision_feats_event"][sec][2] = self.pix_feat_event_adp_h(cur_video["vision_feats_event"][sec][2])
+            cur_event_ = cur_video["vision_feats_event"][sec][2].permute(1, 2, 0)
+            cur_event_ = cur_event_.view(-1, self.hidden_dim, *feat_sizes[-1])
+            cur_video["vision_feats_event"][sec][2] = self.pix_feat_event_adp(cur_event_).view(F, B, C)
+            
+            # cur_video["vision_feats_event"][sec][1] = self.pix_feat_event_adp_m(cur_video["vision_feats_event"][sec][1])
+            # cur_video["vision_feats_event"][sec][2] = self.pix_feat_event_adp_h(cur_video["vision_feats_event"][sec][2])
 
 
 
