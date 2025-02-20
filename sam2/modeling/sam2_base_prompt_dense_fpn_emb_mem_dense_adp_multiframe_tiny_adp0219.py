@@ -938,17 +938,26 @@ class SAM2Base(torch.nn.Module):
             # Process the standard vision features:
             print('cur_video["vision_feats"][sec][2].shape', sec, cur_video["vision_feats"][sec][2].shape)
             
-            F, B, C = cur_video["vision_feats"][sec][2].shape
-            cur_ = cur_video["vision_feats"][sec][2].permute(1, 2, 0)
+            feat = cur_video["vision_feats"][sec][2]
+            if feat.ndim == 2:
+                # Insert a singleton dimension at index 1: from (F, C) to (F, 1, C)
+                feat = feat.unsqueeze(1)
+            F, B, C = feat.shape
+
+            cur_ = feat.permute(1, 2, 0)
             cur_ = cur_.view(-1, self.hidden_dim, *feat_sizes[-1])
             cur_video["vision_feats"][sec][2] = self.pix_feat_adp(cur_).view(F, B, C)
 
             # print('cur_video["vision_feats"][sec][0].shape', cur_video["vision_feats"][sec][0].shape)
             # print('cur_video["vision_feats"][sec][1].shape', cur_video["vision_feats"][sec][1].shape)
 
-
+            feat = cur_video["vision_feats_event"][sec][2]
+            if feat.ndim == 2:
+                # Insert a singleton dimension at index 1: from (F, C) to (F, 1, C)
+                feat = feat.unsqueeze(1)
+            F, B, C = feat.shape
             # Process the vision feature events:
-            cur_event_ = cur_video["vision_feats_event"][sec][2].permute(1, 2, 0)
+            cur_event_ = feat.permute(1, 2, 0)
             cur_event_ = cur_event_.view(-1, self.hidden_dim, *feat_sizes[-1])
             cur_video["vision_feats_event"][sec][2] = self.pix_feat_event_adp(cur_event_).view(F, B, C)
             
