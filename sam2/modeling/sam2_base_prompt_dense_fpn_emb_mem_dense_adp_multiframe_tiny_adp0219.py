@@ -936,7 +936,7 @@ class SAM2Base(torch.nn.Module):
 
         for sec in range(len(cur_video["vision_feats"])):
             # Process the standard vision features:
-            print('cur_video["vision_feats"][sec][2].shape', sec, cur_video["vision_feats"][sec][2].shape)
+            # print('cur_video["vision_feats"][sec][2].shape', sec, cur_video["vision_feats"][sec][2].shape)
             
             feat = cur_video["vision_feats"][sec][2]
             if feat.ndim == 2:
