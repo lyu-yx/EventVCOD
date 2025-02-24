@@ -173,7 +173,7 @@ class SpatialTemporalFeatureAggregator(nn.Module):
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x shape: [S, T, B, F], where S should be H*W.
-        
+        print("in rnn, x shape:", x.shape)
         S, T, B, F = x.shape
         # print("x shape:", x.shape)
         # Permute to bring spatial dimension (S) forward:

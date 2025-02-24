@@ -265,6 +265,9 @@ class SAM2Base(torch.nn.Module):
         self.pix_feat_adp = TinyEventAdaptor(256, use_residual=True)
         self.pix_feat_event_adp = TinyEventAdaptor(256, use_residual=True)
 
+        self.mem_pix_feat_adp = TinyEventAdaptor(256, use_residual=True)
+        self.mem_pix_feat_event_adp = TinyEventAdaptor(256, use_residual=True)
+
 
         # self.pix_feat_adp_m = TinyEventAdaptor(64, use_residual=True)
         # self.pix_feat_event_adp_m = TinyEventAdaptor(64, use_residual=True)
@@ -1014,6 +1017,10 @@ class SAM2Base(torch.nn.Module):
                 num_frames=num_frames,
                 track_in_reverse=track_in_reverse,
             )
+
+            # adding adaptors to the mem part
+            pix_feat = self.mem_pix_feat_adp(pix_feat)
+            pix_feat_short_long = self.mem_pix_feat_event_adp(pix_feat_short_long)
 
             # apply SAM-style segmentation head
             # here we might feed previously predicted low-res SAM mask logits into the SAM mask decoder,
