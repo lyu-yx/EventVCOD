@@ -291,7 +291,7 @@ class SAM2VideoPredictor(SAM2Base):
             batch_size=1,  # run on the slice of a single object
             is_init_cond_frame=is_init_cond_frame,
             point_inputs=None, # change to None to sync with training process.  before: point_inputs
-            mask_inputs=None,
+            mask_inputs=1,
             reverse=reverse,
             # Skip the memory encoder when adding clicks or mask. We execute the memory encoder
             # at the beginning of `propagate_in_video` (after user finalize their clicks). This

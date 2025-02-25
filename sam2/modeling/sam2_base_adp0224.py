@@ -396,10 +396,6 @@ class SAM2Base(torch.nn.Module):
             # Otherwise, simply feed None (and SAM's prompt encoder will add
             # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None
-        print('cur_video["vision_feats"] len', len(cur_video["vision_feats"]))
-        print('in forward sam, cur_video["vision_feats"][0][2].shape', cur_video["vision_feats"][0][2].shape)
-        print('in forward sam, cur_video["vision_feats"][1][2].shape', cur_video["vision_feats"][1][2].shape)
-        print('in forward sam, cur_video["vision_feats"][2][2].shape', cur_video["vision_feats"][2][2].shape)
 
         # updated dense embedding only when there is mask input
         if mask_inputs is not None:
@@ -414,7 +410,7 @@ class SAM2Base(torch.nn.Module):
                 event_features, 
                 high_res_features, 
                 high_res_event_features, 
-                cur_video
+                cur_video,
                 )
 
             (
@@ -960,62 +956,29 @@ class SAM2Base(torch.nn.Module):
         pix_feat_event_adp = self.pix_feat_event_adp(pix_feat_event)
 
 
-        # for sec in range(len(cur_video["vision_feats"])):
-        #     # Process the standard vision features:
-        #     # print('cur_video["vision_feats"][sec][2].shape', sec, cur_video["vision_feats"][sec][2].shape)
-            
-        #     feat = cur_video["vision_feats"][sec][2]
-        #     if feat.ndim == 2:
-        #         # Insert a singleton dimension at index 1: from (F, C) to (F, 1, C)
-        #         feat = feat.unsqueeze(1)
-        #     F, B, C = feat.shape
-
-        #     cur_ = feat.permute(1, 2, 0)
-        #     cur_ = cur_.view(-1, self.hidden_dim, *feat_sizes[-1])
-        #     cur_video["vision_feats"][sec][2] = self.pix_feat_adp(cur_).view(F, B, C)
-
-        #     # print('cur_video["vision_feats"][sec][0].shape', cur_video["vision_feats"][sec][0].shape)
-        #     # print('cur_video["vision_feats"][sec][1].shape', cur_video["vision_feats"][sec][1].shape)
-
-        #     feat = cur_video["vision_feats_event"][sec][2]
-        #     if feat.ndim == 2:
-        #         # Insert a singleton dimension at index 1: from (F, C) to (F, 1, C)
-        #         feat = feat.unsqueeze(1)
-        #     F, B, C = feat.shape
-        #     # Process the vision feature events:
-        #     cur_event_ = feat.permute(1, 2, 0)
-        #     cur_event_ = cur_event_.view(-1, self.hidden_dim, *feat_sizes[-1])
-        #     cur_video["vision_feats_event"][sec][2] = self.pix_feat_event_adp(cur_event_).view(F, B, C)
-            
-        #     # cur_video["vision_feats_event"][sec][1] = self.pix_feat_event_adp_m(cur_video["vision_feats_event"][sec][1])
-        #     # cur_video["vision_feats_event"][sec][2] = self.pix_feat_event_adp_h(cur_video["vision_feats_event"][sec][2])
-
+        B = high_res_event_features[0].size(0)
 
         print('in _track_step len cur_video["vision_feats"]', len(cur_video["vision_feats"]))
+        
         for sec in range(len(cur_video["vision_feats"])):
             # Process the standard vision features:
-            
             feat = cur_video["vision_feats"][sec][2]
             cur_ = feat.permute(1, 2, 0)
             cur_ = cur_.view(-1, self.hidden_dim, *feat_sizes[-1])
-            cur_video["vision_feats"][sec][2] = self.pix_feat_adp(cur_)
+            cur_video["vision_feats"][sec][2] = self.pix_feat_adp(cur_).permute(0, 2, 3, 1).reshape(-1, B, 256)
 
             # print('cur_video["vision_feats"][sec][0].shape', cur_video["vision_feats"][sec][0].shape)
             # print('cur_video["vision_feats"][sec][1].shape', cur_video["vision_feats"][sec][1].shape)
-            print('sec, cur_video["vision_feats"][sec][2].shape', sec, cur_video["vision_feats"][sec][2].shape)
+            # print('sec, cur_video["vision_feats"][sec][2].shape', sec, cur_video["vision_feats"][sec][2].shape)
 
             feat = cur_video["vision_feats_event"][sec][2]
             cur_event_ = feat.permute(1, 2, 0)
             cur_event_ = cur_event_.view(-1, self.hidden_dim, *feat_sizes[-1])
-            cur_video["vision_feats_event"][sec][2] = self.pix_feat_event_adp(cur_event_)
+            cur_video["vision_feats_event"][sec][2] = self.pix_feat_event_adp(cur_event_).permute(0, 2, 3, 1).reshape(-1, B, 256)
             
             # cur_video["vision_feats_event"][sec][1] = self.pix_feat_event_adp_m(cur_video["vision_feats_event"][sec][1])
             # cur_video["vision_feats_event"][sec][2] = self.pix_feat_event_adp_h(cur_video["vision_feats_event"][sec][2])
 
-
-        
-        # print('in _track_step B', B)
-        
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
             # When use_mask_input_as_output_without_sam=True, we directly output the mask input
             # (see it as a GT mask) without using a SAM prompt encoder + mask decoder.
@@ -1025,7 +988,6 @@ class SAM2Base(torch.nn.Module):
             )
 
         else:
-            B = high_res_event_features[0].size(0)
             pix_feat_vit_adp = pix_feat_adp.permute(0, 2, 3, 1).reshape(-1, B, 256)
             pix_feat_event_vit_adp = pix_feat_event_adp.permute(0, 2, 3, 1).reshape(-1, B, 256)
 

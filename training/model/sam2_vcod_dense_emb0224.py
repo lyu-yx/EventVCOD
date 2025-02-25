@@ -384,7 +384,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
 
        
         video_len = len(processing_order)
-        
+        embedding_loss = 0.0
         for stage_id in processing_order:
             cur_video = {"vision_feats":[], "vision_pos_embeds":[], "vision_feats_event":[], "vision_pos_embeds_event":[]}
             # Get the image features for the current frames
@@ -397,7 +397,6 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 current_vision_feats_event = [x[:, img_ids] for x in vision_feats_event]
                 current_vision_pos_embeds_event = [x[:, img_ids] for x in vision_pos_embeds_event]
             
-                
             else:
                 # Otherwise, compute the image features on the fly for the given img_ids
                 # (this might be used for evaluation on long videos to avoid backbone OOM).
@@ -464,6 +463,10 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 output_dict=output_dict,
                 num_frames=num_frames,
             )
+
+            embedding_loss += embedding_loss
+            print('embedding_loss', embedding_loss)
+            
             # Append the output, depending on whether it's a conditioning frame
             add_output_as_cond_frame = stage_id in init_cond_frames or (
                 self.add_all_frames_to_correct_as_cond
