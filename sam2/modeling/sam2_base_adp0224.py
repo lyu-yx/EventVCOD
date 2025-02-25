@@ -396,7 +396,10 @@ class SAM2Base(torch.nn.Module):
             # Otherwise, simply feed None (and SAM's prompt encoder will add
             # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None
-
+        print('cur_video["vision_feats"] len', len(cur_video["vision_feats"]))
+        print('in forward sam, cur_video["vision_feats"][0][2].shape', cur_video["vision_feats"][0][2].shape)
+        print('in forward sam, cur_video["vision_feats"][1][2].shape', cur_video["vision_feats"][1][2].shape)
+        print('in forward sam, cur_video["vision_feats"][2][2].shape', cur_video["vision_feats"][2][2].shape)
 
         # updated dense embedding only when there is mask input
         if mask_inputs is not None:
@@ -406,7 +409,13 @@ class SAM2Base(torch.nn.Module):
                 masks=sam_mask_prompt,
             )
 
-            _, dense_embeddings = self.embedding_generator(backbone_features, event_features, high_res_features, high_res_event_features, cur_video)# a) Handle point prompts
+            _, dense_embeddings = self.embedding_generator(
+                backbone_features, 
+                event_features, 
+                high_res_features, 
+                high_res_event_features, 
+                cur_video
+                )
 
             (
                 low_res_multimasks,
@@ -985,7 +994,6 @@ class SAM2Base(torch.nn.Module):
         print('in _track_step len cur_video["vision_feats"]', len(cur_video["vision_feats"]))
         for sec in range(len(cur_video["vision_feats"])):
             # Process the standard vision features:
-            # print('cur_video["vision_feats"][sec][2].shape', sec, cur_video["vision_feats"][sec][2].shape)
             
             feat = cur_video["vision_feats"][sec][2]
             cur_ = feat.permute(1, 2, 0)
@@ -994,6 +1002,7 @@ class SAM2Base(torch.nn.Module):
 
             # print('cur_video["vision_feats"][sec][0].shape', cur_video["vision_feats"][sec][0].shape)
             # print('cur_video["vision_feats"][sec][1].shape', cur_video["vision_feats"][sec][1].shape)
+            print('sec, cur_video["vision_feats"][sec][2].shape', sec, cur_video["vision_feats"][sec][2].shape)
 
             feat = cur_video["vision_feats_event"][sec][2]
             cur_event_ = feat.permute(1, 2, 0)
@@ -1004,7 +1013,7 @@ class SAM2Base(torch.nn.Module):
             # cur_video["vision_feats_event"][sec][2] = self.pix_feat_event_adp_h(cur_video["vision_feats_event"][sec][2])
 
 
-        B = high_res_event_features[0].size(0)
+        
         # print('in _track_step B', B)
         
         if mask_inputs is not None and self.use_mask_input_as_output_without_sam:
@@ -1016,6 +1025,7 @@ class SAM2Base(torch.nn.Module):
             )
 
         else:
+            B = high_res_event_features[0].size(0)
             pix_feat_vit_adp = pix_feat_adp.permute(0, 2, 3, 1).reshape(-1, B, 256)
             pix_feat_event_vit_adp = pix_feat_event_adp.permute(0, 2, 3, 1).reshape(-1, B, 256)
 
