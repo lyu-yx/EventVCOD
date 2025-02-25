@@ -958,7 +958,7 @@ class SAM2Base(torch.nn.Module):
 
         B = high_res_event_features[0].size(0)
 
-        print('in _track_step len cur_video["vision_feats"]', len(cur_video["vision_feats"]))
+        # print('in _track_step len cur_video["vision_feats"]', len(cur_video["vision_feats"]))
         
         for sec in range(len(cur_video["vision_feats"])):
             # Process the standard vision features:
