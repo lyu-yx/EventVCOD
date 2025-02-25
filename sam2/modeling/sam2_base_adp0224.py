@@ -397,45 +397,59 @@ class SAM2Base(torch.nn.Module):
             # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None
 
-    
-        sparse_embeddings_none, dense_embeddings_gt = self.sam_prompt_encoder(
-            points=(sam_point_coords, sam_point_labels),
-            boxes=None,
-            masks=sam_mask_prompt,
-        )
 
-        # sparse_embeddings, dense_embeddings = self.embedding_generator(backbone_features, event_features)# a) Handle point prompts
-        # print('len high_res_features', len(high_res_features))
-        # print('len high_res_event_features', len(high_res_event_features))
-        # print('high_res_features', high_res_features[0].shape)
-        # print('high_res_event_features', high_res_event_features[0].shape)
-        _, dense_embeddings = self.embedding_generator(backbone_features, event_features, high_res_features, high_res_event_features, cur_video)# a) Handle point prompts
+        # updated dense embedding only when there is mask input
+        if mask_inputs is not None:
+            sparse_embeddings_none, dense_embeddings_gt = self.sam_prompt_encoder(
+                points=(sam_point_coords, sam_point_labels),
+                boxes=None,
+                masks=sam_mask_prompt,
+            )
 
-        (
-            low_res_multimasks,
-            ious,
-            sam_output_tokens,
-            object_score_logits,
-        ) = self.sam_mask_decoder(
-            image_embeddings=backbone_features,
-            image_pe=self.embedding_generator.get_dense_pe(),
-            sparse_prompt_embeddings=sparse_embeddings_none,
-            dense_prompt_embeddings=dense_embeddings,
-            multimask_output=multimask_output,
-            repeat_image=False,  # the image is already batched
-            high_res_features=high_res_features,
-        )
+            _, dense_embeddings = self.embedding_generator(backbone_features, event_features, high_res_features, high_res_event_features, cur_video)# a) Handle point prompts
 
-        # mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt)
+            (
+                low_res_multimasks,
+                ious,
+                sam_output_tokens,
+                object_score_logits,
+            ) = self.sam_mask_decoder(
+                image_embeddings=backbone_features,
+                image_pe=self.embedding_generator.get_dense_pe(),
+                sparse_prompt_embeddings=sparse_embeddings_none,
+                dense_prompt_embeddings=dense_embeddings,
+                multimask_output=multimask_output,
+                repeat_image=False,  # the image is already batched
+                high_res_features=high_res_features,
+            )
 
-        # Compute MSE loss for dense embeddings
-        mse_dense = F.mse_loss(dense_embeddings, dense_embeddings_gt)
+            mse_dense = F.mse_loss(dense_embeddings, dense_embeddings_gt)
+        
+        
+        else:
+            sparse_embeddings_none, dense_embeddings_none = self.sam_prompt_encoder(
+                points=(sam_point_coords, sam_point_labels),
+                boxes=None,
+                masks=None,
+            )
+            (
+                low_res_multimasks,
+                ious,
+                sam_output_tokens,
+                object_score_logits,
+            ) = self.sam_mask_decoder(
+                image_embeddings=backbone_features,
+                image_pe=self.embedding_generator.get_dense_pe(),
+                sparse_prompt_embeddings=sparse_embeddings_none,
+                dense_prompt_embeddings=dense_embeddings_none,
+                multimask_output=multimask_output,
+                repeat_image=False,  # the image is already batched
+                high_res_features=high_res_features,
+            )
 
-        # print('sparse_embeddings', sparse_embeddings.shape)
-        # print('sparse_embeddings_gt', sparse_embeddings_gt.shape)
-        # mse_sparse = F.mse_loss(sparse_embeddings, sparse_embeddings_gt[:,-1:,:])
+            mse_dense = F.mse_loss(dense_embeddings_none, dense_embeddings_none)
 
-        # Combine the losses (you can use a weighted sum if needed)
+        
         embedding_loss = mse_dense 
 
         if self.pred_obj_scores:  # predict if there is an object disappear in following frame
