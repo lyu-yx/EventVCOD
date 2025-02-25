@@ -159,7 +159,7 @@ class SpatialTemporalFeatureAggregator(nn.Module):
     """
     GRU-based aggregator that processes a sequence of future-frame features with spatial dimensions.
     
-    Expected input shape: [B, T, S, F], where S = H*W (e.g. 4096 for 64x64) and F is feature dimension.
+    Expected input shape: [S, T, B, F], where S = H*W (e.g. 4096 for 64x64) and F is feature dimension.
     For each spatial location, the GRU aggregates its T time steps.
     
     Returns:
@@ -173,7 +173,7 @@ class SpatialTemporalFeatureAggregator(nn.Module):
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x shape: [S, T, B, F], where S should be H*W.
-        print("in rnn, x shape:", x.shape)
+        # print("in rnn, x shape:", x.shape)
         S, T, B, F = x.shape
         # print("x shape:", x.shape)
         # Permute to bring spatial dimension (S) forward:

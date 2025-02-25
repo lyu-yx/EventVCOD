@@ -454,7 +454,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             )
 
             embedding_loss += embedding_loss
-            print('embedding_loss', embedding_loss)
+            # print('embedding_loss', embedding_loss)
             
             # Append the output, depending on whether it's a conditioning frame
             add_output_as_cond_frame = stage_id in init_cond_frames or (

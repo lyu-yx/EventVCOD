@@ -10,7 +10,7 @@ scratch:
   base_lr: 3.0e-6
   finer_lr: 1.0e-7
   phases_per_epoch: 1
-  num_epochs: 500
+  num_epochs: 5000000
 
 dataset:
   img_multiplier: 1
@@ -216,7 +216,7 @@ trainer:
     prob_to_use_box_input_for_train: 0.0  # 0.5*0.5 = 0.25 prob to use box instead of points
     prob_to_use_box_input_for_eval: 0.0
     prob_to_sample_from_gt_for_train: 0  # with a small prob, sampling correction points from GT mask instead of prediction errors
-    num_frames_to_correct_for_train: 3  # iteratively sample on random 1~2 frames (always include the first frame)
+    num_frames_to_correct_for_train: 1  # iteratively sample on random 1~2 frames (always include the first frame)
     num_frames_to_correct_for_eval: 1  # only iteratively sample on first frame
     rand_frames_to_correct_for_train: True  # random #init-cond-frame ~ 2
     add_all_frames_to_correct_as_cond: True  # when a frame receives a correction click, it becomes a conditioning frame (even if it's not initially a conditioning frame)
@@ -377,7 +377,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0224v2/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0224_occupygpu/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
