@@ -172,7 +172,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         # processing_order [0, 1, 2, 3, 4, 5, 6, 7]
 
         previous_stages_out, embedding_loss = self.forward_tracking(backbone_out_img, backbone_out_event, input)
-
+        print('in vcod forward embedding_loss', embedding_loss)
         return previous_stages_out, embedding_loss
 
     def _prepare_backbone_features_per_frame(self, img_batch, event_batch, img_ids):
@@ -386,9 +386,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         video_len = len(processing_order)
         embedding_loss = 0.0
         for stage_id in processing_order:
-
             cur_video = {"vision_feats":[], "vision_pos_embeds":[], "vision_feats_event":[], "vision_pos_embeds_event":[]}
-           
             # img_ids = input.find_inputs[stage_id].img_ids
             img_ids = input.flat_obj_to_img_idx[stage_id]
             if img_feats_already_computed:

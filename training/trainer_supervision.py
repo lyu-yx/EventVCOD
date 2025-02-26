@@ -506,6 +506,8 @@ class Trainer:
     ):
         
         outputs, embedding_loss = model(batch)
+
+        print('in trainer _step embedding_loss', embedding_loss)
         # outputs = model(batch)
         targets = batch.masks
         batch_size = len(batch.img_batch)
@@ -944,7 +946,7 @@ class Trainer:
         loss = embedding_loss * 5 +  structure_loss * 5 + loss
 
         print('added loss', loss)
-        
+
         self.scaler.scale(loss).backward()
         loss_mts[loss_key].update(loss.item(), batch_size)
         for extra_loss_key, extra_loss in extra_losses.items():
