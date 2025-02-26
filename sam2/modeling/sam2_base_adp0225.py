@@ -459,7 +459,7 @@ class SAM2Base(torch.nn.Module):
         
         embedding_loss = mse_dense 
 
-        print('embedding_loss', embedding_loss)
+        # print('embedding_loss', embedding_loss)
         if self.pred_obj_scores:  # predict if there is an object disappear in following frame
             is_obj_appearing = object_score_logits > 0
             # print('object_score_logits > 0', object_score_logits > 0)
@@ -997,7 +997,7 @@ class SAM2Base(torch.nn.Module):
                 mask_inputs = prev_sam_mask_logits
             multimask_output = self._use_multimask(is_init_cond_frame, point_inputs)
            
-            print(f'frame_idx:{frame_idx}, mask_input==None:{mask_inputs==None}')
+            # print(f'frame_idx:{frame_idx}, mask_input==None:{mask_inputs==None}')
 
             sam_outputs, embedding_loss = self._forward_sam_heads(
                 backbone_features=pix_feat,

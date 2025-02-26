@@ -434,7 +434,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             # print('cur_video["vision_feats"][1][0].shape', cur_video["vision_feats"][1][0].shape)
             # print('cur_video["vision_feats"][2][0].shape', cur_video["vision_feats"][2][0].shape)
 
-            current_out, embedding_loss = self.track_step(
+            current_out, _step_embedding_loss = self.track_step(
                 frame_idx=stage_id,
                 is_init_cond_frame=stage_id in init_cond_frames,
                 current_vision_feats=current_vision_feats,
@@ -450,8 +450,9 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                 output_dict=output_dict,
                 num_frames=num_frames,
             )
-
-            embedding_loss += embedding_loss
+            # print('in vcod forward_tracking embedding_loss', embedding_loss)
+            embedding_loss += _step_embedding_loss
+            # print('in vcod forward_tracking embedding_loss after', embedding_loss)
             # print('embedding_loss', embedding_loss)
             
             # Append the output, depending on whether it's a conditioning frame

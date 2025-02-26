@@ -941,11 +941,10 @@ class Trainer:
             else:
                 return
 
-        print(f'embedding_loss*5: {embedding_loss*5}, structure_loss*5: {structure_loss*5}, loss: {loss}')
+        print(f'embedding_loss*50: {embedding_loss*50}, structure_loss*5: {structure_loss*10}, loss: {loss}')
 
-        loss = embedding_loss * 5 +  structure_loss * 5 + loss
+        loss = embedding_loss * 50 +  structure_loss * 10 + loss
 
-        print('added loss', loss)
 
         self.scaler.scale(loss).backward()
         loss_mts[loss_key].update(loss.item(), batch_size)
