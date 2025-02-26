@@ -943,6 +943,8 @@ class Trainer:
 
         loss = embedding_loss * 5 +  structure_loss * 5 + loss
 
+        print('added loss', loss)
+        
         self.scaler.scale(loss).backward()
         loss_mts[loss_key].update(loss.item(), batch_size)
         for extra_loss_key, extra_loss in extra_losses.items():
