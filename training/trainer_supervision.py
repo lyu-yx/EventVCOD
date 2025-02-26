@@ -939,6 +939,8 @@ class Trainer:
             else:
                 return
 
+        print(f'embedding_loss*5: {embedding_loss*5}, structure_loss*5: {structure_loss*5}, loss: {loss}')
+
         loss = embedding_loss * 5 +  structure_loss * 5 + loss
 
         self.scaler.scale(loss).backward()
