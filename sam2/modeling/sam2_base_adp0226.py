@@ -425,7 +425,7 @@ class SAM2Base(torch.nn.Module):
             dense_embeddings_pred = dense_embeddings
             mse_dense = F.mse_loss(dense_embeddings, dense_embeddings_gt)
         else:
-            dense_embeddings_pred = dense_embeddings_gt
+            dense_embeddings_pred = dense_embeddings_none
             mse_dense = F.mse_loss(dense_embeddings_none, dense_embeddings_none)
 
         (

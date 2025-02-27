@@ -37,7 +37,7 @@ class ResidualBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, activation: Type[nn.Module]):
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
-        self.gn1 = nn.BatchNorm2d(out_channels)
+        self.bn1 = nn.BatchNorm2d(out_channels)
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(out_channels)
         self.activation = activation()
@@ -264,7 +264,7 @@ class HighResAlignment(nn.Module):
     """
     def __init__(self, in_channels: int, out_channels: int, 
                  input_size: Tuple[int, int], target_size: Tuple[int, int],
-                 norm_layer: nn.Module = nn.BatchNorm2d):
+                 norm_layer=lambda num_channels: nn.GroupNorm(8, num_channels),):
         super().__init__()
         # Calculate the necessary stride based on input and target size.
         stride_h = input_size[0] // target_size[0]
@@ -287,7 +287,7 @@ class EmbeddingGenerator(nn.Module):
         input_image_size: Tuple[int, int],
         mask_in_chans: int,
         activation: Type[nn.Module] = nn.GELU,
-        norm_layer: nn.Module = nn.GroupNorm 
+        norm_layer=lambda num_channels: nn.GroupNorm(8, num_channels),
     ) -> None:
         super().__init__()
         self.embed_dim = embed_dim
@@ -314,22 +314,22 @@ class EmbeddingGenerator(nn.Module):
         self.align_backbone_32 = HighResAlignment(
             in_channels=32, out_channels=256,
             input_size=(256, 256), target_size=image_embedding_size,
-            norm_layer=norm_layer
+            norm_layer=norm_layer,
         )
         self.align_backbone_64 = HighResAlignment(
             in_channels=64, out_channels=256,
             input_size=(128, 128), target_size=image_embedding_size,
-            norm_layer=norm_layer
+            norm_layer=norm_layer,
         )
         self.align_event_32 = HighResAlignment(
             in_channels=32, out_channels=256,
             input_size=(256, 256), target_size=image_embedding_size,
-            norm_layer=norm_layer
+            norm_layer=norm_layer,
         )
         self.align_event_64 = HighResAlignment(
             in_channels=64, out_channels=256,
             input_size=(128, 128), target_size=image_embedding_size,
-            norm_layer=norm_layer
+            norm_layer=norm_layer,
         )
 
         # Fusion layer for high-res features.
