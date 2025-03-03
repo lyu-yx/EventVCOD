@@ -60,7 +60,7 @@ trainer:
   seed_value: 123
 
   model:
-    _target_: training.model.sam2_vcod_dense_fpn_emb_mem_dense_MoCA_adp_multiframe_emb_tiny_emb0217_chg_cond_frame.SAM2TrainVCODPromptGenerator
+    _target_: training.model.sam2_vcod_dense_emb0228_rerun0217_emb.SAM2TrainVCODPromptGenerator
     image_encoder:
       _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
       scalp: 1
