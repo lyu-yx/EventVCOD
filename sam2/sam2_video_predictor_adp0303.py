@@ -376,6 +376,9 @@ class SAM2VideoPredictor(SAM2Base):
         is_cond = is_init_cond_frame or self.add_all_frames_to_correct_as_cond
         storage_key = "cond_frame_outputs" if is_cond else "non_cond_frame_outputs"
         
+
+        prev_sam_mask_logits = None
+
         prev_out = obj_temp_output_dict[storage_key].get(frame_idx)
         if prev_out is None:
             prev_out = obj_output_dict["cond_frame_outputs"].get(frame_idx)
@@ -392,8 +395,10 @@ class SAM2VideoPredictor(SAM2Base):
         print('in add_new_mask:')
         print('is_init_cond_frame (should be true)', is_init_cond_frame)
         print('frame idx', frame_idx)
+        
         if is_init_cond_frame:
             prev_sam_mask_logits = None
+
         current_out, _ = self._run_single_frame_inference(
             inference_state=inference_state,
             output_dict=obj_output_dict,  # run on the slice of a single object
