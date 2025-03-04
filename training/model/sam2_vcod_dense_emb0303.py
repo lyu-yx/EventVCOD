@@ -172,7 +172,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         # processing_order [0, 1, 2, 3, 4, 5, 6, 7]
 
         previous_stages_out, embedding_loss = self.forward_tracking(backbone_out_img, backbone_out_event, input)
-        print('in vcod forward embedding_loss', embedding_loss)
+        # print('in vcod forward embedding_loss', embedding_loss)
         return previous_stages_out, embedding_loss
 
     def _prepare_backbone_features_per_frame(self, img_batch, event_batch, img_ids):

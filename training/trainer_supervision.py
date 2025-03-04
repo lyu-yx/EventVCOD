@@ -507,7 +507,7 @@ class Trainer:
         
         outputs, embedding_loss = model(batch)
 
-        print('in trainer _step embedding_loss', embedding_loss)
+        # print('in trainer _step embedding_loss', embedding_loss)
         # outputs = model(batch)
         targets = batch.masks
         batch_size = len(batch.img_batch)
@@ -941,7 +941,7 @@ class Trainer:
             else:
                 return
 
-        print(f'embedding_loss*50: {embedding_loss*50}, structure_loss*5: {structure_loss*10}, loss: {loss}')
+        # print(f'embedding_loss*50: {embedding_loss*50}, structure_loss*5: {structure_loss*10}, loss: {loss}')
 
         loss = embedding_loss * 50 +  structure_loss * 10 + loss
 

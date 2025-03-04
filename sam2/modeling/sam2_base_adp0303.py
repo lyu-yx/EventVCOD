@@ -404,6 +404,7 @@ class SAM2Base(torch.nn.Module):
                 masks=sam_mask_prompt,
             )
         else:
+            print(f'in _forward_sam_heads, mask_inputs: {mask_inputs}, is_init_cond_frame: {is_init_cond_frame}')
             # Otherwise, simply feed None (and SAM's prompt encoder will add
             # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None

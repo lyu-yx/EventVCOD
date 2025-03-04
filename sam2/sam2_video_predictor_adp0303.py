@@ -392,7 +392,8 @@ class SAM2VideoPredictor(SAM2Base):
         print('in add_new_mask:')
         print('is_init_cond_frame (should be true)', is_init_cond_frame)
         print('frame idx', frame_idx)
-
+        if is_init_cond_frame:
+            prev_sam_mask_logits = None
         current_out, _ = self._run_single_frame_inference(
             inference_state=inference_state,
             output_dict=obj_output_dict,  # run on the slice of a single object

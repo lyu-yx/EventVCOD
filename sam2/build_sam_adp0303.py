@@ -98,7 +98,7 @@ def build_sam2_video_predictor(
             # the sigmoid mask logits on interacted frames with clicks in the memory encoder so that the encoded masks are exactly as what users see from clicking
             "++model.binarize_mask_from_pts_for_mem_enc=true",
             # fill small holes in the low-res masks up to `fill_hole_area` (before resizing them to the original video resolution)
-            "++model.fill_hole_area=16",
+            "++model.fill_hole_area=8",
         ]
     hydra_overrides.extend(hydra_overrides_extra)
 
