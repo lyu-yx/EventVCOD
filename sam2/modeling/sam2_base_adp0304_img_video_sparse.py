@@ -383,7 +383,7 @@ class SAM2Base(torch.nn.Module):
 
         # b) Handle mask prompts
         if mask_inputs is not None and is_init_cond_frame:
-            print('in _forward_sam_heads, mask_inputs not None')
+            # print('in _forward_sam_heads, mask_inputs not None')
             # If mask_inputs is provided, downsize it into low-res mask input if needed
             # and feed it as a dense mask prompt into the SAM mask encoder
             assert len(mask_inputs.shape) == 4 and mask_inputs.shape[:2] == (B, 1)
@@ -404,7 +404,7 @@ class SAM2Base(torch.nn.Module):
                 masks=sam_mask_prompt,
             )
         else:
-            print(f'in _forward_sam_heads, mask_inputs: {mask_inputs}, is_init_cond_frame: {is_init_cond_frame}')
+            # print(f'in _forward_sam_heads, mask_inputs: {mask_inputs}, is_init_cond_frame: {is_init_cond_frame}')
             # Otherwise, simply feed None (and SAM's prompt encoder will add
             # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None
@@ -426,11 +426,11 @@ class SAM2Base(torch.nn.Module):
         
         if mask_inputs is not None and is_init_cond_frame:
             sparse_pred = sparse_embedding_pred
-            mse_dense = F.mse_loss(sparse_pred, sparse_embeddings)
+            mse_dense = F.mse_loss(sparse_pred, sparse_pred)
             
         else:
-            sparse_pred = sparse_embeddings
-            mse_dense = F.mse_loss(sparse_embeddings, sparse_embedding_pred)
+            sparse_pred = sparse_embedding_pred
+            mse_dense = F.mse_loss(sparse_pred, sparse_embeddings[-1])
 
         (
             low_res_multimasks,
