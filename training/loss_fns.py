@@ -88,16 +88,18 @@ def structure_loss(pred, targets, num_objects=1, loss_on_multimask=True):
     # Case 1: pred is a list (of dicts), one per frame
     if isinstance(pred, list):
         losses = []
-        for i, pred_dict in enumerate(pred):
+        p = pred[0]['pred_masks_high_res']
+        for i in range(p.shape[0]):
             # Extract the prediction tensor for this frame
-            p = pred_dict['pred_masks_high_res']  # shape: [1, 1, 1024, 1024]
+            cur_pred = p[i]  # shape: [1, 1, 1024, 1024]
             # Select the corresponding target frame.
             # If there are fewer targets than predictions, default to the first target.
             if i < targets.shape[0]:
                 t = targets[i].unsqueeze(0)  # shape becomes [1, 1, 1024, 1024]
             else:
                 t = targets[0].unsqueeze(0)
-            loss_i = compute_loss(p, t)
+
+            loss_i = compute_loss(cur_pred.unsqueeze(1), t)
             losses.append(loss_i)
         # Average loss over all frames
         final_loss = sum(losses) / len(losses)

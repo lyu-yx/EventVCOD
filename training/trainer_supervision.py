@@ -510,10 +510,16 @@ class Trainer:
         # print('in trainer _step embedding_loss', embedding_loss)
         # outputs = model(batch)
         targets = batch.masks
+        # print('targets', targets.shape)
         batch_size = len(batch.img_batch)
 
         # structure loss
-        structure_loss_v = structure_loss(outputs, targets)
+        # print('outputs len', len(outputs))
+        # print('outputs[0]', outputs[0].keys())
+        # print('outputs[pred_masks_high_res]', outputs['pred_masks_high_res'])
+
+        structure_loss_v = structure_loss(outputs, targets.reshape(-1, 1, 1024, 1024))
+        print('in trainer _step structure_loss_v', structure_loss_v)
 
         key = batch.dict_key  # key for dataset
         loss = self.loss[key](outputs, targets)

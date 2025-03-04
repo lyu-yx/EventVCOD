@@ -9,7 +9,7 @@ import logging
 import numpy as np
 import torch
 import torch.distributed
-from sam2.modeling.sam2_base_adp0304_img_video import SAM2Base
+from sam2.modeling.sam2_base_adp0304_img_video_sparse import SAM2Base
 from sam2.modeling.sam2_utils import (
     get_1d_sine_pe,
     get_next_point,
@@ -255,11 +255,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         if num_frames == 1:
             # here we handle a special case for mixing video + SAM on image training,
             # where we force using point input for the SAM task on static images
-            # prob_to_use_pt_input = 1.0 # original: force to use point input
+            prob_to_use_pt_input = 1.0 # original: force to use point input
             
-            # change to use mask input
-            prob_to_use_pt_input = 0
-            prob_to_use_box_input = 0
             num_frames_to_correct = 1
             num_init_cond_frames = 1
         assert num_init_cond_frames >= 1
