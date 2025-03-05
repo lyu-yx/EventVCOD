@@ -19,6 +19,8 @@ from sam2.modeling.sam.prompt_encoder import PromptEncoder
 from sam2.modeling.sam.event_adaptor_complex import MultiLevelTinyEventAdaptor, TinyEventAdaptor
 # from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
+from training.loss_fns import combined_embedding_loss
+
 # a large negative value as a placeholder score for missing objects
 NO_OBJ_SCORE = -1024.0
 
@@ -398,7 +400,7 @@ class SAM2Base(torch.nn.Module):
             else:
                 sam_mask_prompt = mask_inputs
 
-            sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
+            sparse_embeddings, dense_embeddings_none = self.sam_prompt_encoder(
                 points=(sam_point_coords, sam_point_labels),
                 boxes=None,
                 masks=sam_mask_prompt,
@@ -430,7 +432,7 @@ class SAM2Base(torch.nn.Module):
             
         else:
             sparse_pred = sparse_embedding_pred
-            mse_dense = F.mse_loss(sparse_pred, sparse_embeddings[-1])
+            mse_dense = F.mse_loss(sparse_pred, sparse_embeddings[:,-1,:])
 
         (
             low_res_multimasks,

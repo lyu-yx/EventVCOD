@@ -48,6 +48,27 @@ def dice_loss(inputs, targets, num_objects, loss_on_multimask=False):
         return loss / num_objects
     return loss.sum() / num_objects
 
+def compute_mse_loss(sparse_pred, sparse_embeddings):
+    # Compute Mean Squared Error (MSE) loss
+    mse_loss = torch.mean((sparse_pred - sparse_embeddings) ** 2)
+    return mse_loss
+
+def compute_cosine_similarity_loss(sparse_pred, sparse_embeddings):
+    # Compute Cosine Similarity loss
+    cosine_similarity = F.cosine_similarity(sparse_pred, sparse_embeddings, dim=-1)
+    cosine_loss = 1 - cosine_similarity.mean()  # We want to maximize cosine similarity
+    return cosine_loss
+
+def combined_embedding_loss(sparse_pred, sparse_embeddings, alpha=0.5):
+    # Compute both MSE and Cosine Similarity Loss
+    mse_loss = compute_mse_loss(sparse_pred, sparse_embeddings)
+    cosine_loss = compute_cosine_similarity_loss(sparse_pred, sparse_embeddings)
+    print(f"MSE Loss: {mse_loss}, Cosine Loss: {cosine_loss}")
+    # Combine the two losses (weighted by alpha)
+    total_loss = alpha * mse_loss + (1 - alpha) * cosine_loss
+    return total_loss
+
+
 def structure_loss(pred, targets, num_objects=1, loss_on_multimask=True):
     """
     Structure loss (ref: F3Net-AAAI-2020)
