@@ -432,7 +432,7 @@ class SAM2Base(torch.nn.Module):
             
         else:
             sparse_pred = sparse_embedding_pred
-            mse_dense = combined_embedding_loss(sparse_pred.squeeze(), sparse_embeddings[:,-1,:])
+            mse_dense = combined_embedding_loss(sparse_pred, sparse_embeddings)
 
         (
             low_res_multimasks,

@@ -538,37 +538,37 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         current_out["multistep_object_score_logits"] = [object_score_logits]
 
         # Optionally, sample correction points iteratively to correct the mask
-        if frame_idx in frames_to_add_correction_pt:
-            # print("Iteratively sampling correction points")
-            # print('pix_feat', pix_feat.shape)
-            # print('len high_res_features', len(high_res_features))
-            # print('high_res_features[0]', high_res_features[0].shape)
-            # print('high_res_features[1]', high_res_features[1].shape)
-            point_inputs, final_sam_outputs = self._iter_correct_pt_sampling(
-                is_init_cond_frame,
-                point_inputs,
-                gt_masks,
-                high_res_features,
-                high_res_event_features,
-                pix_feat,
-                event_feat,
-                low_res_multimasks,
-                high_res_multimasks,
-                ious,
-                low_res_masks,
-                high_res_masks,
-                object_score_logits,
-                current_out,
-            )
-            (
-                _,
-                _,
-                _,
-                low_res_masks,
-                high_res_masks,
-                obj_ptr,
-                object_score_logits,
-            ) = final_sam_outputs
+        # if frame_idx in frames_to_add_correction_pt:
+        #     # print("Iteratively sampling correction points")
+        #     # print('pix_feat', pix_feat.shape)
+        #     # print('len high_res_features', len(high_res_features))
+        #     # print('high_res_features[0]', high_res_features[0].shape)
+        #     # print('high_res_features[1]', high_res_features[1].shape)
+        #     point_inputs, final_sam_outputs = self._iter_correct_pt_sampling(
+        #         is_init_cond_frame,
+        #         point_inputs,
+        #         gt_masks,
+        #         high_res_features,
+        #         high_res_event_features,
+        #         pix_feat,
+        #         event_feat,
+        #         low_res_multimasks,
+        #         high_res_multimasks,
+        #         ious,
+        #         low_res_masks,
+        #         high_res_masks,
+        #         object_score_logits,
+        #         current_out,
+        #     )
+        #     (
+        #         _,
+        #         _,
+        #         _,
+        #         low_res_masks,
+        #         high_res_masks,
+        #         obj_ptr,
+        #         object_score_logits,
+        #     ) = final_sam_outputs
 
         # Use the final prediction (after all correction steps for output and eval)
         current_out["pred_masks"] = low_res_masks

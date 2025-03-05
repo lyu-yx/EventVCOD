@@ -59,11 +59,11 @@ def compute_cosine_similarity_loss(sparse_pred, sparse_embeddings):
     cosine_loss = 1 - cosine_similarity.mean()  # We want to maximize cosine similarity
     return cosine_loss
 
-def combined_embedding_loss(sparse_pred, sparse_embeddings, alpha=0.5):
+def combined_embedding_loss(sparse_pred, sparse_embeddings, alpha=0.1):
     # Compute both MSE and Cosine Similarity Loss
     mse_loss = compute_mse_loss(sparse_pred, sparse_embeddings)
     cosine_loss = compute_cosine_similarity_loss(sparse_pred, sparse_embeddings)
-    print(f"MSE Loss: {mse_loss}, Cosine Loss: {cosine_loss}")
+    # print(f"MSE Loss: {mse_loss}, Cosine Loss: {cosine_loss}")
     # Combine the two losses (weighted by alpha)
     total_loss = alpha * mse_loss + (1 - alpha) * cosine_loss
     return total_loss

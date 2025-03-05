@@ -519,7 +519,6 @@ class Trainer:
         # print('outputs[pred_masks_high_res]', outputs['pred_masks_high_res'])
 
         structure_loss_v = structure_loss(outputs, targets.reshape(-1, 1, 1024, 1024))
-        # print('in trainer _step structure_loss_v', structure_loss_v)
 
         key = batch.dict_key  # key for dataset
         loss = self.loss[key](outputs, targets)
@@ -947,9 +946,9 @@ class Trainer:
             else:
                 return
 
-        print(f'embedding_loss*50: {embedding_loss*50}, structure_loss*5: {structure_loss*10}, loss: {loss}')
+        print(f'embedding_loss: {embedding_loss}, structure_loss: {structure_loss}, loss: {loss}')
 
-        loss = embedding_loss * 50 +  structure_loss * 10 + loss
+        loss = embedding_loss +  structure_loss + loss
 
 
         self.scaler.scale(loss).backward()
