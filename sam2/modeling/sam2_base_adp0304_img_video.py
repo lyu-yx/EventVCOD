@@ -383,7 +383,7 @@ class SAM2Base(torch.nn.Module):
 
         # b) Handle mask prompts
         if mask_inputs is not None and is_init_cond_frame:
-            print('in _forward_sam_heads, mask_inputs not None')
+            # print('in _forward_sam_heads, mask_inputs not None')
             # If mask_inputs is provided, downsize it into low-res mask input if needed
             # and feed it as a dense mask prompt into the SAM mask encoder
             assert len(mask_inputs.shape) == 4 and mask_inputs.shape[:2] == (B, 1)
