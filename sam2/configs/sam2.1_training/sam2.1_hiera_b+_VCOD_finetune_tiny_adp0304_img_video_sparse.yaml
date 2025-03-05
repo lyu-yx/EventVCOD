@@ -213,7 +213,7 @@ trainer:
     # box/point input and corrections
     prob_to_use_pt_input_for_train: 1.0
     prob_to_use_pt_input_for_eval: 0.0
-    prob_to_use_box_input_for_train: 1.0  # 0.5*0.5 = 0.25 prob to use box instead of points
+    prob_to_use_box_input_for_train: 0.0  # 0.5*0.5 = 0.25 prob to use box instead of points
     prob_to_use_box_input_for_eval: 0.0
     prob_to_sample_from_gt_for_train: 0  # with a small prob, sampling correction points from GT mask instead of prediction errors
     num_frames_to_correct_for_train: 1  # iteratively sample on random 1~2 frames (always include the first frame)
