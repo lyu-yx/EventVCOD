@@ -290,7 +290,7 @@ trainer:
         _target_: training.utils.data_utils.collate_fn
         _partial_: true
         dict_key: all
-      dataset_prob: [0.2, 0.8]
+      dataset_prob: [0.6, 0.4]
 
   optim:
     amp:
