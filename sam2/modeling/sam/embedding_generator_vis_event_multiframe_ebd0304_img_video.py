@@ -435,18 +435,18 @@ class EmbeddingGenerator(nn.Module):
         combined_features = backbone_processed + 0.3 * event_processed + fused_highres
 
         # Incorporate future features with improved fusion strategy.
-        # if cur_video is not None:
-        #     vision_feats = cur_video.get("vision_feats", None)
-        #     if vision_feats is not None and len(vision_feats) > 0:
-        #         feats_stack = torch.stack(
-        #             [feat[2].unsqueeze(1) if feat[2].dim() == 2 else feat[2] for feat in vision_feats],
-        #             dim=1
-        #         )
-        #         future_summary = self.video_feature_rnn(feats_stack)  # [B, mask_in_chans, 1, 1]
-        #         # Expand future summary spatially.
-        #         future_summary_expanded = future_summary.expand_as(combined_features)
-        #         # Fuse via concatenation and learnable fusion.
-        #         combined_features = self.future_fusion(torch.cat([combined_features, future_summary_expanded], dim=1))
+        if cur_video is not None:
+            vision_feats = cur_video.get("vision_feats", None)
+            if vision_feats is not None and len(vision_feats) > 0:
+                feats_stack = torch.stack(
+                    [feat[2].unsqueeze(1) if feat[2].dim() == 2 else feat[2] for feat in vision_feats],
+                    dim=1
+                )
+                future_summary = self.video_feature_rnn(feats_stack)  # [B, mask_in_chans, 1, 1]
+                # Expand future summary spatially.
+                future_summary_expanded = future_summary.expand_as(combined_features)
+                # Fuse via concatenation and learnable fusion.
+                combined_features = self.future_fusion(torch.cat([combined_features, future_summary_expanded], dim=1))
 
         # Apply attention modules.
         features = self.channel_attention(combined_features)

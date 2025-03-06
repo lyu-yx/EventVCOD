@@ -12,14 +12,14 @@ from torch.nn.init import trunc_normal_
 
 
 from sam2.modeling.sam.mask_decoder import MaskDecoder
-from sam2.modeling.sam.embedding_generator_vis_event_multiframe_ebd0305_img_video_sparse import EmbeddingGenerator, initialize_embedding_generator
+from sam2.modeling.sam.embedding_generator_vis_event_multiframe_ebd0304_img_video import EmbeddingGenerator, initialize_embedding_generator
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
 from sam2.modeling.sam.event_adaptor_complex import MultiLevelTinyEventAdaptor, TinyEventAdaptor
-# from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
 from training.loss_fns import combined_embedding_loss
+# from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 
 # a large negative value as a placeholder score for missing objects
 NO_OBJ_SCORE = -1024.0
@@ -399,26 +399,28 @@ class SAM2Base(torch.nn.Module):
                 )
             else:
                 sam_mask_prompt = mask_inputs
+            print('if mask_inputs is not None and is_init_cond_frame:')
+            print(f'in _forward_sam_heads, mask_inputs: {mask_inputs.shape}, max: {mask_inputs.max()}')
 
-            sparse_embeddings, dense_embeddings_none = self.sam_prompt_encoder(
+            sparse_embeddings_none, dense_embeddings_gt = self.sam_prompt_encoder(
                 points=(sam_point_coords, sam_point_labels),
                 boxes=None,
                 masks=sam_mask_prompt,
             )
         else:
-            # print(f'in _forward_sam_heads, mask_inputs: {mask_inputs}, is_init_cond_frame: {is_init_cond_frame}')
+            print('if mask_inputs: None or is_init_cond_frame: False')
+            print(f'in _forward_sam_heads, mask_inputs: {mask_inputs.shape}, max: {mask_inputs.max()}')
             # Otherwise, simply feed None (and SAM's prompt encoder will add
             # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None
-            sparse_embeddings, dense_embeddings_none = self.sam_prompt_encoder(
+            sparse_embeddings_none, dense_embeddings_none = self.sam_prompt_encoder(
                 points=(sam_point_coords, sam_point_labels),
                 boxes=None,
                 masks=sam_mask_prompt,
             )
         
         # compute embedding for all condition but deliver dense embedding for the initial frame only
-
-        sparse_embedding_pred, dense_embeddings_pred = self.embedding_generator(
+        _, dense_embeddings = self.embedding_generator(
             backbone_features, 
             event_features, 
             high_res_features, 
@@ -427,12 +429,15 @@ class SAM2Base(torch.nn.Module):
             )
         
         if mask_inputs is not None and is_init_cond_frame:
-            sparse_pred = sparse_embedding_pred
-            mse_dense = combined_embedding_loss(sparse_pred, sparse_pred)
+            dense_embeddings_pred = dense_embeddings
+            mse_dense = combined_embedding_loss(dense_embeddings, dense_embeddings_gt)
+            print('compute the dense embedding loss', mse_dense)
             
         else:
-            sparse_pred = sparse_embedding_pred
-            mse_dense = combined_embedding_loss(sparse_pred, sparse_embeddings)
+            dense_embeddings_pred = dense_embeddings_none
+            mse_dense = combined_embedding_loss(dense_embeddings_none, dense_embeddings_none)
+            print('compute the none embedding loss', mse_dense)
+
 
         (
             low_res_multimasks,
@@ -442,8 +447,8 @@ class SAM2Base(torch.nn.Module):
         ) = self.sam_mask_decoder(
             image_embeddings=backbone_features,
             image_pe=self.embedding_generator.get_dense_pe(),
-            sparse_prompt_embeddings=sparse_embedding_pred,
-            dense_prompt_embeddings=dense_embeddings_none,
+            sparse_prompt_embeddings=sparse_embeddings_none,
+            dense_prompt_embeddings=dense_embeddings_pred,
             multimask_output=multimask_output,
             repeat_image=False,  # the image is already batched
             high_res_features=high_res_features,
@@ -766,9 +771,6 @@ class SAM2Base(torch.nn.Module):
                 # directly add no-mem embedding (instead of using the transformer encoder)
                 pix_feat_with_mem = current_vision_feats[-1] + self.no_mem_embed
 
-                # print('current_vision_feats_event[-1]', current_vision_feats_event[-1].shape)
-                # print('B, C, H, W', B, C, H, W)
-                # print('pix_feat_with_mem', pix_feat_with_mem.shape)
                 pix_feat_with_mem = pix_feat_with_mem.permute(1, 2, 0).view(B, C, H, W)
 
                 pix_feat_with_mem_event = current_vision_feats_event[-1] + self.no_mem_embed
@@ -776,22 +778,9 @@ class SAM2Base(torch.nn.Module):
 
                 return pix_feat_with_mem, pix_feat_with_mem_event
 
-            # print('self.no_mem_embed.shape', self.no_mem_embed.shape)
-            # print('self.no_mem_pos_enc.shape', self.no_mem_pos_enc.shape)
-            # print('self.mem_dim', self.mem_dim)
             
             to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim)]
             to_cat_memory_pos_embed = [self.no_mem_pos_enc.expand(1, B, self.mem_dim)]
-
-
-            # to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim)]
-            # to_cat_memory_pos_embed = [self.no_mem_pos_enc.expand(1, B, self.mem_dim)]
-
-            # to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim, 256)]
-            # to_cat_memory_pos_embed = [self.no_mem_pos_enc.expand(1, B, self.mem_dim, 256)]
-
-            # to_cat_memory = [self.no_mem_to_cat_memory.expand(1, B, self.mem_dim)]
-            # to_cat_memory_pos_embed = [self.no_mem_to_cat_memory_pos_enc.expand(1, B, self.mem_dim)]
 
         
         # Step 2: Concatenate the memories and forward through the transformer encoder

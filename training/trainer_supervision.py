@@ -945,7 +945,9 @@ class Trainer:
                 raise FloatingPointError(error_msg)
             else:
                 return
-
+            
+        print('loss_key', loss_key)
+        print('loss', loss)
         print(f'embedding_loss: {embedding_loss}, structure_loss: {structure_loss}, loss: {loss}')
 
         loss = embedding_loss +  structure_loss + loss
