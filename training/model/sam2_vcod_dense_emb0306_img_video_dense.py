@@ -387,8 +387,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         embedding_loss = 0.0
 
         # cur_video related
-        if video_len != 1:
-            for stage_id in processing_order:
+        for stage_id in processing_order:
+            if video_len != 1:  # have temporal realtion
                 cur_video = {"vision_feats":[], "vision_pos_embeds":[], "vision_feats_event":[], "vision_pos_embeds_event":[]}
                 # img_ids = input.find_inputs[stage_id].img_ids
                 img_ids = input.flat_obj_to_img_idx[stage_id]
@@ -429,8 +429,8 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
                         cur_video["vision_pos_embeds"].append(zero_pos_embed)
                         cur_video["vision_feats_event"].append(zero_feat_event)
                         cur_video["vision_pos_embeds_event"].append(zero_pos_embed_event)
-        else:
-            cur_video = None
+            else: # no temporal relation, batch image input
+                cur_video = None
             # Get output masks based on this frame's prompts and previous memory
             # print('cur_video["vision_feats"][0][0].shape', cur_video["vision_feats"][0][0].shape)
             # print('cur_video["vision_feats"][0][1].shape', cur_video["vision_feats"][0][1].shape)
@@ -439,36 +439,36 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
             # print('cur_video["vision_feats"][2][0].shape', cur_video["vision_feats"][2][0].shape)
 
 
-        current_out, _step_embedding_loss = self.track_step(
-            frame_idx=stage_id,
-            is_init_cond_frame=stage_id in init_cond_frames,
-            current_vision_feats=current_vision_feats,
-            current_vision_pos_embeds=current_vision_pos_embeds,
-            current_vision_feats_event=current_vision_feats_event,
-            current_vision_pos_embeds_event=current_vision_pos_embeds_event,
-            cur_video=cur_video,
-            feat_sizes=feat_sizes,
-            point_inputs=backbone_out["point_inputs_per_frame"].get(stage_id, None),
-            mask_inputs=backbone_out["mask_inputs_per_frame"].get(stage_id, None),
-            gt_masks=backbone_out["gt_masks_per_frame"].get(stage_id, None),
-            frames_to_add_correction_pt=frames_to_add_correction_pt,
-            output_dict=output_dict,
-            num_frames=num_frames,
-        )
-        # print('in vcod forward_tracking embedding_loss', embedding_loss)
-        embedding_loss += _step_embedding_loss
-        # print('in vcod forward_tracking embedding_loss after', embedding_loss)
-        # print('embedding_loss', embedding_loss)
-        
-        # Append the output, depending on whether it's a conditioning frame
-        add_output_as_cond_frame = stage_id in init_cond_frames or (
-            self.add_all_frames_to_correct_as_cond
-            and stage_id in frames_to_add_correction_pt
-        )
-        if add_output_as_cond_frame:
-            output_dict["cond_frame_outputs"][stage_id] = current_out
-        else:
-            output_dict["non_cond_frame_outputs"][stage_id] = current_out
+            current_out, _step_embedding_loss = self.track_step(
+                frame_idx=stage_id,
+                is_init_cond_frame=stage_id in init_cond_frames,
+                current_vision_feats=current_vision_feats,
+                current_vision_pos_embeds=current_vision_pos_embeds,
+                current_vision_feats_event=current_vision_feats_event,
+                current_vision_pos_embeds_event=current_vision_pos_embeds_event,
+                cur_video=cur_video,
+                feat_sizes=feat_sizes,
+                point_inputs=backbone_out["point_inputs_per_frame"].get(stage_id, None),
+                mask_inputs=backbone_out["mask_inputs_per_frame"].get(stage_id, None),
+                gt_masks=backbone_out["gt_masks_per_frame"].get(stage_id, None),
+                frames_to_add_correction_pt=frames_to_add_correction_pt,
+                output_dict=output_dict,
+                num_frames=num_frames,
+            )
+            # print('in vcod forward_tracking embedding_loss', embedding_loss)
+            embedding_loss += _step_embedding_loss
+            # print('in vcod forward_tracking embedding_loss after', embedding_loss)
+            # print('embedding_loss', embedding_loss)
+            
+            # Append the output, depending on whether it's a conditioning frame
+            add_output_as_cond_frame = stage_id in init_cond_frames or (
+                self.add_all_frames_to_correct_as_cond
+                and stage_id in frames_to_add_correction_pt
+            )
+            if add_output_as_cond_frame:
+                output_dict["cond_frame_outputs"][stage_id] = current_out
+            else:
+                output_dict["non_cond_frame_outputs"][stage_id] = current_out
 
         if return_dict:
             return output_dict
