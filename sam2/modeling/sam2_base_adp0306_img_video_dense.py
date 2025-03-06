@@ -400,7 +400,8 @@ class SAM2Base(torch.nn.Module):
             else:
                 sam_mask_prompt = mask_inputs
             print('if mask_inputs is not None and is_init_cond_frame:')
-            print(f'in _forward_sam_heads, mask_inputs: {mask_inputs.shape}, max: {mask_inputs.max()}')
+            print(f'in _forward_sam_heads, mask_inputs: {mask_inputs.shape}, max: {mask_inputs.max()}, proportion of True: {mask_inputs.sum().item() / mask_inputs.numel():.6f}')
+
 
             sparse_embeddings_none, dense_embeddings_gt = self.sam_prompt_encoder(
                 points=(sam_point_coords, sam_point_labels),
@@ -408,8 +409,11 @@ class SAM2Base(torch.nn.Module):
                 masks=sam_mask_prompt,
             )
         else:
-            print('if mask_inputs: None or is_init_cond_frame: False')
-            print(f'in _forward_sam_heads, mask_inputs: {mask_inputs.shape}, max: {mask_inputs.max()}')
+            if mask_inputs is not None:
+                print('if mask_inputs is not None and is_init_cond_frame: False')
+                print(f'in _forward_sam_heads, mask_inputs: {mask_inputs.shape}, max: {mask_inputs.max()}, proportion of True: {mask_inputs.sum().item() / mask_inputs.numel():.6f}')
+            else:
+                print('mask None')
             # Otherwise, simply feed None (and SAM's prompt encoder will add
             # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None
