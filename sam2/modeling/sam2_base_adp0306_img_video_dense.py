@@ -922,22 +922,22 @@ class SAM2Base(torch.nn.Module):
         B = high_res_event_features[0].size(0)
 
         # print('in _track_step len cur_video["vision_feats"]', len(cur_video["vision_feats"]))
-        
-        for sec in range(len(cur_video["vision_feats"])):
-            # Process the standard vision features:
-            feat = cur_video["vision_feats"][sec][2]
-            cur_ = feat.permute(1, 2, 0)
-            cur_ = cur_.view(-1, self.hidden_dim, *feat_sizes[-1])
-            cur_video["vision_feats"][sec][2] = cur_.permute(0, 2, 3, 1).reshape(-1, B, 256)
+        if cur_video is not None:
+            for sec in range(len(cur_video["vision_feats"])):
+                # Process the standard vision features:
+                feat = cur_video["vision_feats"][sec][2]
+                cur_ = feat.permute(1, 2, 0)
+                cur_ = cur_.view(-1, self.hidden_dim, *feat_sizes[-1])
+                cur_video["vision_feats"][sec][2] = cur_.permute(0, 2, 3, 1).reshape(-1, B, 256)
 
-            # print('cur_video["vision_feats"][sec][0].shape', cur_video["vision_feats"][sec][0].shape)
-            # print('cur_video["vision_feats"][sec][1].shape', cur_video["vision_feats"][sec][1].shape)
-            # print('sec, cur_video["vision_feats"][sec][2].shape', sec, cur_video["vision_feats"][sec][2].shape)
+                # print('cur_video["vision_feats"][sec][0].shape', cur_video["vision_feats"][sec][0].shape)
+                # print('cur_video["vision_feats"][sec][1].shape', cur_video["vision_feats"][sec][1].shape)
+                # print('sec, cur_video["vision_feats"][sec][2].shape', sec, cur_video["vision_feats"][sec][2].shape)
 
-            feat = cur_video["vision_feats_event"][sec][2]
-            cur_event_ = feat.permute(1, 2, 0)
-            cur_event_ = cur_event_.view(-1, self.hidden_dim, *feat_sizes[-1])
-            cur_video["vision_feats_event"][sec][2] = cur_event_.permute(0, 2, 3, 1).reshape(-1, B, 256)
+                feat = cur_video["vision_feats_event"][sec][2]
+                cur_event_ = feat.permute(1, 2, 0)
+                cur_event_ = cur_event_.view(-1, self.hidden_dim, *feat_sizes[-1])
+                cur_video["vision_feats_event"][sec][2] = cur_event_.permute(0, 2, 3, 1).reshape(-1, B, 256)
             
             # cur_video["vision_feats_event"][sec][1] = self.pix_feat_event_adp_m(cur_video["vision_feats_event"][sec][1])
             # cur_video["vision_feats_event"][sec][2] = self.pix_feat_event_adp_h(cur_video["vision_feats_event"][sec][2])

@@ -388,31 +388,31 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
 
         # cur_video related
         for stage_id in processing_order:
-            if video_len != 1:  # have temporal realtion
-                cur_video = {"vision_feats":[], "vision_pos_embeds":[], "vision_feats_event":[], "vision_pos_embeds_event":[]}
-                # img_ids = input.find_inputs[stage_id].img_ids
-                img_ids = input.flat_obj_to_img_idx[stage_id]
-                if img_feats_already_computed:
+            img_ids = input.flat_obj_to_img_idx[stage_id]
+            if img_feats_already_computed:
                     # Retrieve image features according to img_ids (if they are already computed).
                     current_vision_feats = [x[:, img_ids] for x in vision_feats]
                     current_vision_pos_embeds = [x[:, img_ids] for x in vision_pos_embeds]
                     current_vision_feats_event = [x[:, img_ids] for x in vision_feats_event]
                     current_vision_pos_embeds_event = [x[:, img_ids] for x in vision_pos_embeds_event]
                 
-                else:
-                    # Otherwise, compute the image features on the fly for the given img_ids
-                    # (this might be used for evaluation on long videos to avoid backbone OOM).
-                    (
-                        current_backbone_fpn,
-                        current_backbone_fpn_evt,
-                        current_vision_feats,
-                        current_vision_pos_embeds,
-                        current_vision_feats_event, 
-                        current_vision_pos_embeds_event,
-                        feat_sizes,
-                    ) = self._prepare_backbone_features_per_frame(
-                        input.flat_img_batch, input.flat_event_batch, img_ids
-                    )
+            else:
+                # Otherwise, compute the image features on the fly for the given img_ids
+                # (this might be used for evaluation on long videos to avoid backbone OOM).
+                (
+                    current_backbone_fpn,
+                    current_backbone_fpn_evt,
+                    current_vision_feats,
+                    current_vision_pos_embeds,
+                    current_vision_feats_event, 
+                    current_vision_pos_embeds_event,
+                    feat_sizes,
+                ) = self._prepare_backbone_features_per_frame(
+                    input.flat_img_batch, input.flat_event_batch, img_ids
+                )
+            if video_len != 1:  # have temporal realtion
+                cur_video = {"vision_feats":[], "vision_pos_embeds":[], "vision_feats_event":[], "vision_pos_embeds_event":[]}
+                # img_ids = input.find_inputs[stage_id].img_ids
                 for i in range(self.num_frames_embedding):
                     if stage_id + i + 1 < video_len:
                         cur_video["vision_feats"].append([x[:, img_ids + i + 1] for x in vision_feats])
