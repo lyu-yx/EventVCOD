@@ -252,19 +252,16 @@ trainer:
         transforms: ${vos.train_transforms}
         training: true
         video_dataset:
-          _target_: training.dataset.vos_raw_dataset.VCODDatasetMoCA
-          img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
-          gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
-          eventflow_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/MoCA-Video-Train_event/
-          # file_list_txt: None
-          # ann_every: 4
+          _target_: training.dataset.vos_raw_dataset.COD10KDataset
+          img_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
+          gt_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
+          eventflow_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
+          # file_list_txt: ${path_to_train_filelist} # Optional
         sampler:
           _target_: training.dataset.vos_sampler.RandomUniformSampler
-          num_frames: ${scratch.num_frames} # Number of frames per video
+          num_frames: 1
           max_num_objects: ${scratch.max_num_objects}
-          reverse_time_prob: 0 # probability to reverse video
-        multiplier: ${dataset.video_multiplier}
-        # transforms: ${video_transforms}
+        multiplier: ${dataset.img_multiplier}
           
       shuffle: True
       num_workers: ${scratch.num_train_workers}

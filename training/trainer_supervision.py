@@ -950,7 +950,7 @@ class Trainer:
         print('loss', loss)
         print(f'embedding_loss: {embedding_loss}, structure_loss: {structure_loss}, loss: {loss}')
 
-        loss = embedding_loss +  structure_loss + loss
+        loss = embedding_loss * 5 +  structure_loss + loss
 
 
         self.scaler.scale(loss).backward()

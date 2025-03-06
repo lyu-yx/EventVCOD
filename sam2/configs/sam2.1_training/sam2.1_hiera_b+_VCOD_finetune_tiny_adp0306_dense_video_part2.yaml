@@ -373,7 +373,7 @@ trainer:
       state_dict:
         _target_: training.utils.checkpoint_utils.load_checkpoint_and_apply_kernels
         # checkpoint_path: ./scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0306_dense_img_part1/checkpoints/checkpoint_50.pt # PATH to SAM 2.1 checkpoint
-        checkpoint_path: ./scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0305_img_video_dense/checkpoints/checkpoint_50.pt # PATH to SAM 2.1 checkpoint
+        checkpoint_path: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0305_img_video_dense/checkpoints/checkpoint_50.pt # PATH to SAM 2.1 checkpoint
         ckpt_state_dict_keys: ['model']
 
 launcher:
