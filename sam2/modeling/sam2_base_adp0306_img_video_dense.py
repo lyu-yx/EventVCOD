@@ -430,7 +430,7 @@ class SAM2Base(torch.nn.Module):
             high_res_features, 
             high_res_event_features, 
             cur_video,
-            )
+        )
         
         if mask_inputs is not None and is_init_cond_frame:
             dense_embeddings_pred = dense_embeddings
