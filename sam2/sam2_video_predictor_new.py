@@ -12,7 +12,7 @@ import torch.nn.functional as F
 
 from tqdm import tqdm
 
-from sam2.modeling.sam2_base import NO_OBJ_SCORE, SAM2Base
+from sam2.modeling.sam2_base_adp0306_img_video_dense import NO_OBJ_SCORE, SAM2Base
 from sam2.utils.misc import concat_points, fill_holes_in_mask_scores, load_video_frames
 
 
@@ -30,6 +30,7 @@ class SAM2VideoPredictor(SAM2Base):
         # if `add_all_frames_to_correct_as_cond` is True, we also append to the conditioning frame list any frame that receives a later correction click
         # if `add_all_frames_to_correct_as_cond` is False, we conditioning frame list to only use those initial conditioning frames
         add_all_frames_to_correct_as_cond=False,
+        num_frames_embedding=3,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -749,6 +750,7 @@ class SAM2VideoPredictor(SAM2Base):
     ):
         """Run tracking on a single frame based on current inputs and previous memory."""
         # Retrieve correct image features
+        # Retrieve correct image features
         (
             _,
             _,
@@ -757,6 +759,60 @@ class SAM2VideoPredictor(SAM2Base):
             feat_sizes,
         ) = self._get_image_feature(inference_state, frame_idx, batch_size)
 
+        (
+            _,
+            _,
+            current_vision_feats_event,
+            current_vision_pos_embeds_event,
+            feat_sizes,
+        ) = self._get_event_feature(inference_state, frame_idx, batch_size)
+
+        cur_video = {"vision_feats":[], "vision_pos_embeds":[], "vision_feats_event":[], "vision_pos_embeds_event":[]}
+        
+        video_len = inference_state["num_frames"]
+        # print("video_len", video_len)
+        # print("frame_idx", frame_idx)
+        for i in range(self.num_frames_embedding):
+            if frame_idx + i + 1 < video_len:
+                (
+                    _,
+                    _,
+                    _current_vision_feats,
+                    _current_vision_pos_embeds,
+                    _feat_sizes,
+                ) = self._get_image_feature(inference_state, frame_idx + i + 1, batch_size)
+
+                (
+                    _,
+                    _,
+                    _current_vision_feats_event,
+                    _current_vision_pos_embeds_event,
+                    _feat_sizes,
+                ) = self._get_event_feature(inference_state, frame_idx + i + 1, batch_size)
+                # print("Type of current_vision_feats:", type(current_vision_feats))
+                # if isinstance(current_vision_feats, list):
+                #     print("current_vision_feats contains:")
+                #     for i, feat in enumerate(current_vision_feats):
+                #         print(f"  Element {i}: Type={type(feat)}, Shape={getattr(feat, 'shape', 'N/A')}")
+
+            else:
+                # Create zero tensors matching the structure
+                device = inference_state["device"]
+
+                # Create zero tensors matching the structure and move them to CUDA
+                _current_vision_feats = [torch.zeros((h * w, 1, c), device=device) for (h, w), c in zip(feat_sizes, [32, 64, 256])]
+                _current_vision_pos_embeds = [torch.zeros((h * w, 1, 256), device=device) for (h, w) in feat_sizes]
+
+                # Create zero tensors for the event features and move them to CUDA
+                _current_vision_feats_event = [torch.zeros((h * w, 1, c), device=device) for (h, w), c in zip(feat_sizes, [32, 64, 256])]
+                _current_vision_pos_embeds_event = [torch.zeros((h * w, 1, 256), device=device) for (h, w) in feat_sizes]
+            
+            cur_video["vision_feats"].append(_current_vision_feats)
+            cur_video["vision_pos_embeds"].append(_current_vision_pos_embeds)
+            cur_video["vision_feats_event"].append(_current_vision_feats_event)
+            cur_video["vision_pos_embeds_event"].append(_current_vision_pos_embeds_event)
+
+        
         # point and mask should not appear as input simultaneously on the same frame
         assert point_inputs is None or mask_inputs is None
         current_out = self.track_step(
@@ -764,6 +820,9 @@ class SAM2VideoPredictor(SAM2Base):
             is_init_cond_frame=is_init_cond_frame,
             current_vision_feats=current_vision_feats,
             current_vision_pos_embeds=current_vision_pos_embeds,
+            current_vision_feats_event=current_vision_feats_event,
+            current_vision_pos_embeds_event=current_vision_pos_embeds_event,
+            cur_video=cur_video,
             feat_sizes=feat_sizes,
             point_inputs=point_inputs,
             mask_inputs=mask_inputs,
@@ -801,6 +860,8 @@ class SAM2VideoPredictor(SAM2Base):
             "object_score_logits": object_score_logits,
         }
         return compact_current_out, pred_masks_gpu
+
+        
 
     def _run_memory_encoder(
         self,
