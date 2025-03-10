@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 from sam2.modeling.sam2_base_adp0306_img_video_dense import NO_OBJ_SCORE, SAM2Base
-from sam2.utils.misc import concat_points, fill_holes_in_mask_scores, load_video_frames
+from sam2.utils.misc import concat_points, fill_holes_in_mask_scores, load_video_frames_and_events
 
 
 class SAM2VideoPredictor(SAM2Base):
@@ -49,7 +49,7 @@ class SAM2VideoPredictor(SAM2Base):
     ):
         """Initialize an inference state."""
         compute_device = self.device  # device of the model
-        images, video_height, video_width = load_video_frames(
+        images, events, video_height, video_width = load_video_frames_and_events(
             video_path=video_path,
             image_size=self.image_size,
             offload_video_to_cpu=offload_video_to_cpu,
@@ -58,6 +58,7 @@ class SAM2VideoPredictor(SAM2Base):
         )
         inference_state = {}
         inference_state["images"] = images
+        inference_state["events"] = events
         inference_state["num_frames"] = len(images)
         # whether to offload the video frames to CPU memory
         # turning on this option saves the GPU memory with only a very small overhead
@@ -78,14 +79,20 @@ class SAM2VideoPredictor(SAM2Base):
         # inputs on each frame
         inference_state["point_inputs_per_obj"] = {}
         inference_state["mask_inputs_per_obj"] = {}
-        # visual features on a small number of recently visited frames for quick interactions
+        # visual and event features on a small number of recently visited frames for quick interactions
         inference_state["cached_features"] = {}
+        inference_state["cached_features_event"] = {}
         # values that don't change across frames (so we only need to hold one copy of them)
         inference_state["constants"] = {}
         # mapping between client-side object id and model-side object index
         inference_state["obj_id_to_idx"] = OrderedDict()
         inference_state["obj_idx_to_id"] = OrderedDict()
         inference_state["obj_ids"] = []
+        # A storage to hold the model's tracking results and states on each frame
+        inference_state["output_dict"] = {
+            "cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
+            "non_cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
+        }
         # Slice (view) of each object tracking results, sharing the same memory with "output_dict"
         inference_state["output_dict_per_obj"] = {}
         # A temporary storage to hold new outputs when user interact with a frame
@@ -93,10 +100,16 @@ class SAM2VideoPredictor(SAM2Base):
         inference_state["temp_output_dict_per_obj"] = {}
         # Frames that already holds consolidated outputs from click or mask inputs
         # (we directly use their consolidated outputs during tracking)
+        inference_state["consolidated_frame_inds"] = {
+            "cond_frame_outputs": set(),  # set containing frame indices
+            "non_cond_frame_outputs": set(),  # set containing frame indices
+        }
         # metadata for each tracking frame (e.g. which direction it's tracked)
-        inference_state["frames_tracked_per_obj"] = {}
+        inference_state["tracking_has_started"] = False
+        inference_state["frames_already_tracked"] = {}
         # Warm up the visual backbone and cache the image feature on frame 0
         self._get_image_feature(inference_state, frame_idx=0, batch_size=1)
+        self._get_event_feature(inference_state, frame_idx=0, batch_size=1)
         return inference_state
 
     @classmethod
@@ -719,6 +732,39 @@ class SAM2VideoPredictor(SAM2Base):
 
         # expand the features to have the same dimension as the number of objects
         expanded_image = image.expand(batch_size, -1, -1, -1)
+        expanded_backbone_out = {
+            "backbone_fpn": backbone_out["backbone_fpn"].copy(),
+            "vision_pos_enc": backbone_out["vision_pos_enc"].copy(),
+        }
+        for i, feat in enumerate(expanded_backbone_out["backbone_fpn"]):
+            expanded_backbone_out["backbone_fpn"][i] = feat.expand(
+                batch_size, -1, -1, -1
+            )
+        for i, pos in enumerate(expanded_backbone_out["vision_pos_enc"]):
+            pos = pos.expand(batch_size, -1, -1, -1)
+            expanded_backbone_out["vision_pos_enc"][i] = pos
+
+        features = self._prepare_backbone_features(expanded_backbone_out)
+        features = (expanded_image,) + features
+        return features
+    
+    def _get_event_feature(self, inference_state, frame_idx, batch_size):
+        """Compute the event features on a given frame."""
+        # Look up in the cache first
+        event, backbone_out = inference_state["cached_features_event"].get(
+            frame_idx, (None, None)
+        )
+        if backbone_out is None:
+            # Cache miss -- we will run inference on a single image
+            device = inference_state["device"]
+            event = inference_state["events"][frame_idx].to(device).float().unsqueeze(0)
+            backbone_out = self.forward_image(event)
+            # Cache the most recent frame's feature (for repeated interactions with
+            # a frame; we can use an LRU cache for more frames in the future).
+            inference_state["cached_features_event"] = {frame_idx: (event, backbone_out)}
+
+        # expand the features to have the same dimension as the number of objects
+        expanded_image = event.expand(batch_size, -1, -1, -1)
         expanded_backbone_out = {
             "backbone_fpn": backbone_out["backbone_fpn"].copy(),
             "vision_pos_enc": backbone_out["vision_pos_enc"].copy(),
