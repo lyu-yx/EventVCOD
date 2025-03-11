@@ -175,7 +175,7 @@ trainer:
 
     
     num_frames_embedding: 3
-    num_maskmem: 0
+    num_maskmem: 7
     image_size: ${scratch.resolution}
     # apply scaled sigmoid on mask logits for memory encoder, and directly feed input mask as output mask
     sigmoid_scale_for_mem_enc: 20.0
@@ -187,7 +187,7 @@ trainer:
     # use high-resolution feature map in the SAM mask decoder
     use_high_res_features_in_sam: true
     # output 3 masks on the first click on initial conditioning frames
-    multimask_output_in_sam: False
+    multimask_output_in_sam: true
     # SAM heads
     iou_prediction_use_sigmoid: True
     # cross-attend to object pointers from other frames (based on SAM output tokens) in the encoder
