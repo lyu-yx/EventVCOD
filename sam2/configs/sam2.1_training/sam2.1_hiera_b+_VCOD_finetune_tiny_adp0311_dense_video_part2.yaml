@@ -60,7 +60,7 @@ trainer:
   seed_value: 123
 
   model:
-    _target_: training.model.sam2_vcod_dense_emb0306_img_video_dense.SAM2TrainVCODPromptGenerator
+    _target_: training.model.sam2_vcod_dense_emb0311_img_video_dense_pred_mask_emb.SAM2TrainVCODPromptGenerator
     image_encoder:
       _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
       scalp: 1
@@ -175,7 +175,7 @@ trainer:
 
     
     num_frames_embedding: 3
-    num_maskmem: 0
+    num_maskmem: 7
     image_size: ${scratch.resolution}
     # apply scaled sigmoid on mask logits for memory encoder, and directly feed input mask as output mask
     sigmoid_scale_for_mem_enc: 20.0
@@ -187,7 +187,7 @@ trainer:
     # use high-resolution feature map in the SAM mask decoder
     use_high_res_features_in_sam: true
     # output 3 masks on the first click on initial conditioning frames
-    multimask_output_in_sam: False
+    multimask_output_in_sam: true
     # SAM heads
     iou_prediction_use_sigmoid: True
     # cross-attend to object pointers from other frames (based on SAM output tokens) in the encoder
@@ -228,10 +228,10 @@ trainer:
     
 
     freeze_image_encoder: True
-    freeze_mask_decoder: False
+    freeze_mask_decoder: True
     freeze_embedding_generator: False
-    freeze_memory_attention: True
-    freeze_short_long_relation_attention: True
+    freeze_memory_attention: False
+    freeze_short_long_relation_attention: False
     freeze_memory_encoder: True
     freeze_prompt_encoder: True
     
@@ -246,22 +246,25 @@ trainer:
       _target_: training.dataset.sam2_datasets.TorchTrainMixedDataset 
       phases_per_epoch: ${scratch.phases_per_epoch} # Chunks a single epoch into smaller phases
       batch_sizes: # List of batch sizes corresponding to each dataset
-        - 32
+        - 1 # Batch size of dataset 1
       datasets:
       - _target_: training.dataset.vos_dataset.VOSDataset
         transforms: ${vos.train_transforms}
         training: true
         video_dataset:
-          _target_: training.dataset.vos_raw_dataset.COD10KDataset
-          img_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
-          gt_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
-          eventflow_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
-          # file_list_txt: ${path_to_train_filelist} # Optional
+          _target_: training.dataset.vos_raw_dataset.VCODDatasetMoCA
+          img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
+          gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
+          eventflow_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/MoCA-Video-Train_event/
+          # file_list_txt: None
+          # ann_every: 4
         sampler:
           _target_: training.dataset.vos_sampler.RandomUniformSampler
-          num_frames: 1
+          num_frames: ${scratch.num_frames} # Number of frames per video
           max_num_objects: ${scratch.max_num_objects}
-        multiplier: ${dataset.img_multiplier}
+          reverse_time_prob: 0 # probability to reverse video
+        multiplier: ${dataset.video_multiplier}
+        # transforms: ${video_transforms}
           
       shuffle: True
       num_workers: ${scratch.num_train_workers}
@@ -369,13 +372,14 @@ trainer:
 
       state_dict:
         _target_: training.utils.checkpoint_utils.load_checkpoint_and_apply_kernels
-        checkpoint_path: ./checkpoints/sam2.1_hiera_base_plus.pt # PATH to SAM 2.1 checkpoint
+        checkpoint_path: ./scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0311_dense_img_part1/checkpoints/checkpoint_50.pt # PATH to SAM 2.1 checkpoint
+        # checkpoint_path: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0305_img_video_dense/checkpoints/checkpoint_50.pt # PATH to SAM 2.1 checkpoint
         ckpt_state_dict_keys: ['model']
 
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0306_dense_img_part1/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0311_dense_video_part2/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:

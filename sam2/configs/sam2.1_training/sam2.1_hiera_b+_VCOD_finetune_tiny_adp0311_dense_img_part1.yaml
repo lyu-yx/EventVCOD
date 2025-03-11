@@ -60,7 +60,7 @@ trainer:
   seed_value: 123
 
   model:
-    _target_: training.model.sam2_vcod_dense_emb0306_img_video_dense.SAM2TrainVCODPromptGenerator
+    _target_: training.model.sam2_vcod_dense_emb0311_img_video_dense_pred_mask_emb.SAM2TrainVCODPromptGenerator
     image_encoder:
       _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
       scalp: 1
@@ -228,7 +228,7 @@ trainer:
     
 
     freeze_image_encoder: True
-    freeze_mask_decoder: False
+    freeze_mask_decoder: True
     freeze_embedding_generator: False
     freeze_memory_attention: True
     freeze_short_long_relation_attention: True
@@ -375,7 +375,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0306_dense_img_part1/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0311_dense_img_part1/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:

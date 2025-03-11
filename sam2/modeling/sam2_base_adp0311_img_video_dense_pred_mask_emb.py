@@ -12,13 +12,13 @@ from torch.nn.init import trunc_normal_
 
 
 from sam2.modeling.sam.mask_decoder import MaskDecoder
-from sam2.modeling.sam.embedding_generator_vis_event_multiframe_ebd0304_img_video import EmbeddingGenerator, initialize_embedding_generator
+from sam2.modeling.sam.embedding_generator_vis_event_multiframe_ebd0311_img_video_pred_mask_emb import EmbeddingGenerator, initialize_embedding_generator
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
 from sam2.modeling.sam.event_adaptor_complex import MultiLevelTinyEventAdaptor, TinyEventAdaptor
 
-from training.loss_fns import combined_embedding_loss
+from training.loss_fns import combined_embedding_loss, structure_loss
 # from prompt_gen.prompt_generator_visionfeat import PromptGenerator
 import matplotlib.pyplot as plt
 import time
@@ -400,35 +400,12 @@ class SAM2Base(torch.nn.Module):
                 )
             else:
                 sam_mask_prompt = mask_inputs
-            print('if mask_inputs is not None and is_init_cond_frame:')
-            print(f'in _forward_sam_heads, mask_inputs: {mask_inputs.shape}, max: {mask_inputs.max()}, proportion of True: {mask_inputs.sum().item() / mask_inputs.numel():.6f}')
-
-
-            sparse_embeddings_none, dense_embeddings_gt = self.sam_prompt_encoder(
-                points=(sam_point_coords, sam_point_labels),
-                boxes=None,
-                masks=sam_mask_prompt,
-            )
-
             
-
         else:
-            if mask_inputs is not None:
-                print('if mask_inputs is not None and is_init_cond_frame: False')
-                print(f'in _forward_sam_heads, mask_inputs: {mask_inputs.shape}, max: {mask_inputs.max()}, proportion of True: {mask_inputs.sum().item() / mask_inputs.numel():.6f}')
-            else:
-                print('mask None')
-            # Otherwise, simply feed None (and SAM's prompt encoder will add
-            # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None
-            sparse_embeddings_none, dense_embeddings_none = self.sam_prompt_encoder(
-                points=(sam_point_coords, sam_point_labels),
-                boxes=None,
-                masks=sam_mask_prompt,
-            )
         
         # compute embedding for all condition but deliver dense embedding for the initial frame only
-        _, dense_embeddings = self.embedding_generator(
+        mask_inputs_pred = self.embedding_generator(
             backbone_features, 
             event_features, 
             high_res_features, 
@@ -437,47 +414,61 @@ class SAM2Base(torch.nn.Module):
         )
 
         
-        for sample in range(B):
-            data = dense_embeddings_gt[sample].mean(dim=0).cpu().float().detach().numpy()
-            # Plot as a heatmap
-            plt.figure(figsize=(10, 4))
-            plt.imshow(data, aspect='auto', cmap='viridis')
-            plt.colorbar()
-            plt.title('dense_embeddings_gt Heatmap visualization of 16x256 tensor')
-            plt.xlabel('Feature dimension (256)')
-            plt.ylabel('Batch or sequence dimension (16)')
-            plt.savefig('tensor_heatmap_dense_embeddings_gt'+ str(sample) + '.png', bbox_inches='tight', dpi=100)
-            plt.close()
+        sparse_embeddings_gt, dense_embeddings_gt = self.sam_prompt_encoder(
+                points=(sam_point_coords, sam_point_labels),
+                boxes=None,
+                masks=sam_mask_prompt,
+            )
+
+        sparse_embeddings_pred, dense_embeddings_pred = self.sam_prompt_encoder(
+                points=(sam_point_coords, sam_point_labels),
+                boxes=None,
+                masks=mask_inputs_pred,
+            )
+
+        # save the dense_embeddings_gt and dense_embeddings for debug visualization (discard, predict mask in the middle directly)
+        # for sample in range(B):
+        #     data = dense_embeddings_gt[sample].mean(dim=0).cpu().float().detach().numpy()
+        #     # Plot as a heatmap
+        #     plt.figure(figsize=(10, 4))
+        #     plt.imshow(data, aspect='auto', cmap='viridis')
+        #     plt.colorbar()
+        #     plt.title('dense_embeddings_gt Heatmap visualization of 16x256 tensor')
+        #     plt.xlabel('Feature dimension (256)')
+        #     plt.ylabel('Batch or sequence dimension (16)')
+        #     plt.savefig('tensor_heatmap_dense_embeddings_gt'+ str(sample) + '.png', bbox_inches='tight', dpi=100)
+        #     plt.close()
 
         
 
 
-        for sample in range(B):
-            data = dense_embeddings[sample].mean(dim=0).cpu().float().detach().numpy()
-            # Plot as a heatmap
-            plt.figure(figsize=(10, 4))
-            plt.imshow(data, aspect='auto', cmap='viridis')
-            plt.colorbar()
-            plt.title('dense_embeddings Heatmap')
-            plt.xlabel('Feature dimension (256)')
-            plt.ylabel('Batch or sequence dimension (16)')
-            plt.savefig('tensor_heatmap_dense_embeddings' + str(sample) + '.png', bbox_inches='tight', dpi=100)
-            plt.close()
+        # for sample in range(B):
+        #     data = dense_embeddings[sample].mean(dim=0).cpu().float().detach().numpy()
+        #     # Plot as a heatmap
+        #     plt.figure(figsize=(10, 4))
+        #     plt.imshow(data, aspect='auto', cmap='viridis')
+        #     plt.colorbar()
+        #     plt.title('dense_embeddings Heatmap')
+        #     plt.xlabel('Feature dimension (256)')
+        #     plt.ylabel('Batch or sequence dimension (16)')
+        #     plt.savefig('tensor_heatmap_dense_embeddings' + str(sample) + '.png', bbox_inches='tight', dpi=100)
+        #     plt.close()
         
 
-        print('done')
-        time.sleep(1000000)
+        
+        # time.sleep(1000000)
         if mask_inputs is not None and is_init_cond_frame:
-            dense_embeddings_pred = dense_embeddings
-            mse_dense = combined_embedding_loss(dense_embeddings, dense_embeddings_gt)
-            print('compute the dense embedding loss', mse_dense)
+            dense_embeddings_input = dense_embeddings_pred
+            sparse_embeddings_input = sparse_embeddings_pred
             
         else:
-            dense_embeddings_pred = dense_embeddings_none
-            mse_dense = combined_embedding_loss(dense_embeddings_none, dense_embeddings_none)
-            print('compute the none embedding loss', mse_dense)
+            dense_embeddings_input = dense_embeddings_gt
+            sparse_embeddings_input = sparse_embeddings_gt
 
+        # this loss should work for all frame
+        embedding_loss = structure_loss(mask_inputs, mask_inputs_pred)
 
+        
         (
             low_res_multimasks,
             ious,
@@ -486,15 +477,13 @@ class SAM2Base(torch.nn.Module):
         ) = self.sam_mask_decoder(
             image_embeddings=backbone_features,
             image_pe=self.embedding_generator.get_dense_pe(),
-            sparse_prompt_embeddings=sparse_embeddings_none,
-            dense_prompt_embeddings=dense_embeddings_pred,
+            sparse_prompt_embeddings=sparse_embeddings_input,
+            dense_prompt_embeddings=dense_embeddings_input,
             multimask_output=multimask_output,
             repeat_image=False,  # the image is already batched
             high_res_features=high_res_features,
         )
         
-        embedding_loss = mse_dense 
-
         # print('embedding_loss', embedding_loss)
         if self.pred_obj_scores:  # predict if there is an object disappear in following frame
             is_obj_appearing = object_score_logits > 0
