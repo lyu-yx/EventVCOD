@@ -413,7 +413,7 @@ class SAM2Base(torch.nn.Module):
             cur_video,
         )
 
-        
+
         sparse_embeddings_gt, dense_embeddings_gt = self.sam_prompt_encoder(
                 points=(sam_point_coords, sam_point_labels),
                 boxes=None,
@@ -425,6 +425,7 @@ class SAM2Base(torch.nn.Module):
                 boxes=None,
                 masks=mask_inputs_pred,
             )
+        
 
         # save the dense_embeddings_gt and dense_embeddings for debug visualization (discard, predict mask in the middle directly)
         # for sample in range(B):
@@ -460,15 +461,20 @@ class SAM2Base(torch.nn.Module):
         if mask_inputs is not None and is_init_cond_frame:
             dense_embeddings_input = dense_embeddings_pred
             sparse_embeddings_input = sparse_embeddings_pred
+
+            mask = mask_inputs.float()
+            # this loss should work for all frame
+
+            mask_resized = F.interpolate(mask, size=mask_inputs_pred.shape[-2:], mode='bilinear', align_corners=False)
+
+            embedding_loss = structure_loss(mask_inputs_pred, mask_resized)
+            
             
         else:
             dense_embeddings_input = dense_embeddings_gt
             sparse_embeddings_input = sparse_embeddings_gt
+            embedding_loss = structure_loss(mask_inputs_pred, mask_inputs_pred)
 
-
-        mask = mask_inputs.float()
-        # this loss should work for all frame
-        embedding_loss = structure_loss(mask, mask_inputs_pred)
         print('embedding_loss', embedding_loss)
         
         (

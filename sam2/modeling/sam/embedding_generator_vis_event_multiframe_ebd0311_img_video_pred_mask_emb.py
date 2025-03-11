@@ -787,8 +787,8 @@ class EmbeddingGenerator(nn.Module):
         features_level3 = self.feature_extractor_level3(features_level2_upsampled)
         
         # Upsample mask and features to final size (1024x1024)
-        mask_level2_upsampled = F.interpolate(mask_level2, size=(1024, 1024), mode='bilinear', align_corners=False)
-        features_level3_upsampled = F.interpolate(features_level3, size=(1024, 1024), mode='bilinear', align_corners=False)
+        mask_level2_upsampled = F.interpolate(mask_level2, size=(256, 256), mode='bilinear', align_corners=False)
+        features_level3_upsampled = F.interpolate(features_level3, size=(256, 256), mode='bilinear', align_corners=False)
         
         # Concatenate upsampled mask with features for final refinement
         combined_level3 = torch.cat([features_level3_upsampled, mask_level2_upsampled], dim=1)
