@@ -253,7 +253,6 @@ class SAM2Base(torch.nn.Module):
 
         # directly generate embeddings from image features
         self.embedding_generator = EmbeddingGenerator(
-            embed_dim=self.sam_prompt_embed_dim,
             image_embedding_size=(
                 self.sam_image_embedding_size,
                 self.sam_image_embedding_size,
@@ -468,7 +467,7 @@ class SAM2Base(torch.nn.Module):
         # this loss should work for all frame
         embedding_loss = structure_loss(mask_inputs, mask_inputs_pred)
 
-        
+        print('embedding_loss', embedding_loss)
         (
             low_res_multimasks,
             ious,
