@@ -465,7 +465,8 @@ class SAM2Base(torch.nn.Module):
             sparse_embeddings_input = sparse_embeddings_gt
 
         # this loss should work for all frame
-        embedding_loss = structure_loss(mask_inputs, mask_inputs_pred)
+        mask = mask_inputs.float()
+        embedding_loss = structure_loss(mask, mask_inputs_pred)
 
         print('embedding_loss', embedding_loss)
         (

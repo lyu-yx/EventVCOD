@@ -755,11 +755,19 @@ class EmbeddingGenerator(nn.Module):
         # Motion consistency map derived from event features
         motion_consistency = torch.sigmoid(motion_map)
         
+        region_enhanced_features = features * region_attention
+
+        # Apply boundary attention to help with precise edge detection
+        boundary_enhanced_features = region_enhanced_features * boundary_map
+
+        # Apply motion consistency from event data for temporal coherence
+        motion_enhanced_features = boundary_enhanced_features * motion_consistency
+                
         # Hierarchical mask prediction - Level 1 (64x64)
-        mask_level1 = self.mask_predictor_level1(features)
+        mask_level1 = self.mask_predictor_level1(motion_enhanced_features)
         
         # Prepare features for the second level
-        features_level2 = self.feature_extractor_level2(features)
+        features_level2 = self.feature_extractor_level2(motion_enhanced_features)
         
         # Upsample mask and features to 256x256
         mask_level1_upsampled = F.interpolate(mask_level1, size=(256, 256), mode='bilinear', align_corners=False)
