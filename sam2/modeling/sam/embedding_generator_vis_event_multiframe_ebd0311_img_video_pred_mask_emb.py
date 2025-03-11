@@ -282,6 +282,7 @@ class HighResAlignment(nn.Module):
 class EmbeddingGenerator(nn.Module):
     def __init__(
         self,
+        embed_dim: int, 
         image_embedding_size: Tuple[int, int],  # e.g., (64, 64)
         input_image_size: Tuple[int, int],  # e.g., (1024, 1024)
         mask_in_chans: int,
@@ -293,6 +294,9 @@ class EmbeddingGenerator(nn.Module):
         self.input_image_size = input_image_size
         self.activation = activation()
         
+
+        self.pe_layer = PositionEmbeddingRandom(embed_dim // 2)
+
         # Reuse the backbone and event feature processing blocks from the original
         self.backbone_block = nn.Sequential(
             nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=1),
@@ -796,3 +800,9 @@ class EmbeddingGenerator(nn.Module):
         final_mask = self._enhace_edges(mask_level3)
         
         return final_mask
+    
+
+    def get_dense_pe(self) -> torch.Tensor:
+        pe = self.pe_layer(self.image_embedding_size).unsqueeze(0)
+        device = next(self.parameters()).device
+        return pe.to(device)

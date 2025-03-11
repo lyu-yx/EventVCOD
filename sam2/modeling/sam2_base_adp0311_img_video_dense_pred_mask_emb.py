@@ -253,6 +253,7 @@ class SAM2Base(torch.nn.Module):
 
         # directly generate embeddings from image features
         self.embedding_generator = EmbeddingGenerator(
+            embed_dim=self.sam_prompt_embed_dim,
             image_embedding_size=(
                 self.sam_image_embedding_size,
                 self.sam_image_embedding_size,
@@ -464,11 +465,12 @@ class SAM2Base(torch.nn.Module):
             dense_embeddings_input = dense_embeddings_gt
             sparse_embeddings_input = sparse_embeddings_gt
 
-        # this loss should work for all frame
-        mask = mask_inputs.float()
-        embedding_loss = structure_loss(mask, mask_inputs_pred)
 
+        mask = mask_inputs.float()
+        # this loss should work for all frame
+        embedding_loss = structure_loss(mask, mask_inputs_pred)
         print('embedding_loss', embedding_loss)
+        
         (
             low_res_multimasks,
             ious,
