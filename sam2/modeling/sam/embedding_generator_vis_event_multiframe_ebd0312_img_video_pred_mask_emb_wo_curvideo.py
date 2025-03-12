@@ -215,11 +215,12 @@ class EmbeddingGenerator(nn.Module):
         )
         # Level 2: Refine mask and upsample to final 256x256 resolution
         self.feature_extractor_level2 = nn.Sequential(
-            nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=1),
+            nn.Conv2d(mask_in_chans + 1, mask_in_chans, kernel_size=3, padding=1),
             norm_layer(mask_in_chans),
             self.activation,
             ResidualBlock(mask_in_chans, mask_in_chans, activation)
         )
+        
         self.mask_refiner_level2 = nn.Sequential(
             nn.Conv2d(mask_in_chans + 1, mask_in_chans, kernel_size=3, padding=1),
             norm_layer(mask_in_chans),
@@ -316,19 +317,22 @@ class EmbeddingGenerator(nn.Module):
         # ----------------------------
         # Hierarchical Mask Prediction
         # ----------------------------
-        # Level 1: Predict a low-resolution mask (e.g., 64x64)
+        # Level 1: Predict a coarse mask
         mask_level1 = self.mask_predictor_level1(motion_enhanced_features)
-        
-        # Level 2: Upsample and refine mask to 256x256
         mask_level1_upsampled = F.interpolate(mask_level1, size=self.input_image_size, mode='bilinear', align_corners=False)
-        features_level2 = self.feature_extractor_level2(motion_enhanced_features)
-        features_level2_upsampled = F.interpolate(features_level2, size=self.input_image_size, mode='bilinear', align_corners=False)
-        combined_level2 = torch.cat([features_level2_upsampled, mask_level1_upsampled], dim=1)
-        mask_level2 = self.mask_refiner_level2(combined_level2)
+
+        # Hierarchical fusion: Concatenate the coarse mask with the original features
+        combined_input_level2 = torch.cat([motion_enhanced_features, mask_level1_upsampled], dim=1)
+        features_level2 = self.feature_extractor_level2(combined_input_level2)
+
+        # Optionally, you can then refine the mask further with a dedicated refiner
+        mask_level2 = self.mask_refiner_level2(features_level2)
         
         # Enhance edges for a crisper final mask
         final_mask = self._enhace_edges(mask_level2)
         return final_mask  # Expected shape: [B, 1, 256, 256]
+    
+    
     def get_dense_pe(self) -> torch.Tensor:
         pe = self.pe_layer(self.image_embedding_size).unsqueeze(0)
         device = next(self.parameters()).device

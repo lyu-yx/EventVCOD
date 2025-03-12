@@ -109,21 +109,21 @@ def structure_loss(pred, targets, num_objects=1, loss_on_multimask=True):
     # Case 1: pred is a list (of dicts), one per frame
     if isinstance(pred, list):
         losses = []
-        p = pred[0]['pred_masks_high_res']
-        for i in range(p.shape[0]):
-            # Extract the prediction tensor for this frame
-            cur_pred = p[i]  # shape: [1, 1, 1024, 1024]
-            # Select the corresponding target frame.
-            # If there are fewer targets than predictions, default to the first target.
-            if i < targets.shape[0]:
-                t = targets[i].unsqueeze(0)  # shape becomes [1, 1, 1024, 1024]
-            else:
-                t = targets[0].unsqueeze(0)
-
-            loss_i = compute_loss(cur_pred.unsqueeze(1), t)
-            losses.append(loss_i)
-        # Average loss over all frames
-        final_loss = sum(losses) / len(losses)
+        list_len = len(pred)
+        if list_len == 1:
+            p = pred[0]['pred_masks_high_res']
+            t = targets
+            final_loss = compute_loss(p, t)
+            # print('for img input, final_loss', final_loss)
+        else:
+            for i in range(list_len):
+                p = pred[i]['pred_masks_high_res']
+                t = targets[i].unsqueeze(0)
+                loss_i = compute_loss(p, t)
+                losses.append(loss_i)
+                # Average loss over all frames
+            final_loss = sum(losses) / len(losses)
+            # print('for video input, final_loss', final_loss)
         return final_loss
 
     # Case 2: pred is a tensor
