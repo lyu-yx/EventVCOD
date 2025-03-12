@@ -6,9 +6,9 @@ scratch:
   num_train_workers: 8
   num_frames: 8
   max_num_objects: 1
-  larger_lr: 5.0e-6
-  base_lr: 3.0e-6
-  finer_lr: 1.0e-7
+  larger_lr: 5.0e-5
+  base_lr: 5.0e-6
+  finer_lr: 1.0e-6
   phases_per_epoch: 1
   num_epochs: 500
 
@@ -317,7 +317,7 @@ trainer:
             end_value: ${divide:${scratch.larger_lr},10}
           param_names:
           - 'short_long_relation_attention.*'
-
+          - 'embedding_generator.*'
 
       weight_decay:
         - scheduler:
