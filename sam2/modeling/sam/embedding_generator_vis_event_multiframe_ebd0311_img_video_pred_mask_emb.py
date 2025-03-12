@@ -774,8 +774,8 @@ class EmbeddingGenerator(nn.Module):
         features_level2 = self.feature_extractor_level2(motion_enhanced_features)
         
         # Upsample mask and features to 256x256
-        mask_level1_upsampled = F.interpolate(mask_level1, size=(256, 256), mode='bilinear', align_corners=False)
-        features_level2_upsampled = F.interpolate(features_level2, size=(256, 256), mode='bilinear', align_corners=False)
+        mask_level1_upsampled = F.interpolate(mask_level1, size=(128, 128), mode='bilinear', align_corners=False)
+        features_level2_upsampled = F.interpolate(features_level2, size=(128, 128), mode='bilinear', align_corners=False)
         
         # Concatenate upsampled mask with features
         combined_level2 = torch.cat([features_level2_upsampled, mask_level1_upsampled], dim=1)

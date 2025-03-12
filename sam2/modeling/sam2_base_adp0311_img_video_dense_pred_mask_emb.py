@@ -466,13 +466,15 @@ class SAM2Base(torch.nn.Module):
             # this loss should work for all frame
 
             mask_resized = F.interpolate(mask, size=mask_inputs_pred.shape[-2:], mode='bilinear', align_corners=False)
-
+            print('mask_inputs not none')
             embedding_loss = structure_loss(mask_inputs_pred, mask_resized)
             
             
         else:
             dense_embeddings_input = dense_embeddings_gt
             sparse_embeddings_input = sparse_embeddings_gt
+            
+            print('none')
             embedding_loss = structure_loss(mask_inputs_pred, mask_inputs_pred)
 
         print('embedding_loss', embedding_loss)
