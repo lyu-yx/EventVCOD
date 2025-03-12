@@ -3,9 +3,20 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import List, Tuple, Type
 
-# ----------------------------
-# Auxiliary Modules
-# ----------------------------
+def initialize_embedding_generator(module):
+    if isinstance(module, nn.Conv2d):
+        nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+        if module.bias is not None:
+            nn.init.constant_(module.bias, 0)
+    elif isinstance(module, nn.Linear):
+        nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+        if module.bias is not None:
+            nn.init.constant_(module.bias, 0)
+    elif isinstance(module, nn.BatchNorm2d):
+        nn.init.constant_(module.weight, 1)
+        if module.bias is not None:
+            nn.init.constant_(module.bias, 0)
+
 
 class ChannelAttention(nn.Module):
     def __init__(self, channels: int, reduction: int = 16):
@@ -222,7 +233,7 @@ class EmbeddingGenerator(nn.Module):
         )
         
         self.mask_refiner_level2 = nn.Sequential(
-            nn.Conv2d(mask_in_chans + 1, mask_in_chans, kernel_size=3, padding=1),
+            nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=1),
             norm_layer(mask_in_chans),
             self.activation,
             ResidualBlock(mask_in_chans, mask_in_chans, activation),
@@ -319,17 +330,20 @@ class EmbeddingGenerator(nn.Module):
         # ----------------------------
         # Level 1: Predict a coarse mask
         mask_level1 = self.mask_predictor_level1(motion_enhanced_features)
-        mask_level1_upsampled = F.interpolate(mask_level1, size=self.input_image_size, mode='bilinear', align_corners=False)
-
+        
         # Hierarchical fusion: Concatenate the coarse mask with the original features
-        combined_input_level2 = torch.cat([motion_enhanced_features, mask_level1_upsampled], dim=1)
-        features_level2 = self.feature_extractor_level2(combined_input_level2)
+        combined_input_level2 = torch.cat([motion_enhanced_features, mask_level1], dim=1)
+
+        mask_level2_upsampled = F.interpolate(combined_input_level2, size=(256, 256), mode='bilinear', align_corners=False)
+        
+        features_level2 = self.feature_extractor_level2(mask_level2_upsampled)
 
         # Optionally, you can then refine the mask further with a dedicated refiner
         mask_level2 = self.mask_refiner_level2(features_level2)
         
         # Enhance edges for a crisper final mask
         final_mask = self._enhace_edges(mask_level2)
+
         return final_mask  # Expected shape: [B, 1, 256, 256]
     
     
