@@ -518,7 +518,7 @@ class Trainer:
         # print('outputs[0]', outputs[0].keys())
         # print('outputs[pred_masks_high_res]', outputs['pred_masks_high_res'])
 
-        structure_loss_v = structure_loss(outputs, targets.reshape(-1, 1, 1024, 1024))
+        structure_loss_v = structure_loss(outputs, targets.reshape(-1, 1, 1024, 1024), loss_on_multimask=False)
 
         key = batch.dict_key  # key for dataset
         loss = self.loss[key](outputs, targets)

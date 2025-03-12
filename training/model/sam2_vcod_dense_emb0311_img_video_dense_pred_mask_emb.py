@@ -483,6 +483,7 @@ class SAM2TrainVCODPromptGenerator(SAM2Base):
         ]
         # print('batch or video done')
         print('embedding_loss', embedding_loss)
+        print('all_frame_outputs', all_frame_outputs)
         return all_frame_outputs, embedding_loss
 
     def track_step(
