@@ -390,15 +390,21 @@ class EmbeddingGenerator(nn.Module):
         )
         self.pe_layer = PositionEmbeddingRandom(embed_dim // 2)
 
-        self.dense_residual = nn.Conv2d(mask_in_chans, embed_dim, kernel_size=1)
+        self.dense_residual = nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=1)
 
         self.upsample = nn.Upsample(size=(256, 256), mode='bilinear', align_corners=False)
 
         self.final_pred = nn.Sequential(
-            nn.Conv2d(embed_dim, 1, kernel_size=1),
+            nn.Conv2d(mask_in_chans, mask_in_chans, kernel_size=3, padding=1),
+            norm_layer(mask_in_chans),
+            self.activation,
+            ResidualBlock(mask_in_chans, mask_in_chans, activation),
+            nn.Conv2d(mask_in_chans, mask_in_chans // 2, kernel_size=3, padding=1),
+            norm_layer(mask_in_chans // 2),
+            self.activation,
+            nn.Conv2d(mask_in_chans // 2, 1, kernel_size=1),
             nn.Sigmoid()
         )
-
 
 
     def forward(
