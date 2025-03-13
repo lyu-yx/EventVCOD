@@ -425,37 +425,6 @@ class SAM2Base(torch.nn.Module):
             )
         
 
-        # save the dense_embeddings_gt and dense_embeddings for debug visualization (discard, predict mask in the middle directly)
-        # for sample in range(B):
-        #     data = dense_embeddings_gt[sample].mean(dim=0).cpu().float().detach().numpy()
-        #     # Plot as a heatmap
-        #     plt.figure(figsize=(10, 4))
-        #     plt.imshow(data, aspect='auto', cmap='viridis')
-        #     plt.colorbar()
-        #     plt.title('dense_embeddings_gt Heatmap visualization of 16x256 tensor')
-        #     plt.xlabel('Feature dimension (256)')
-        #     plt.ylabel('Batch or sequence dimension (16)')
-        #     plt.savefig('tensor_heatmap_dense_embeddings_gt'+ str(sample) + '.png', bbox_inches='tight', dpi=100)
-        #     plt.close()
-
-        
-
-
-        # for sample in range(B):
-        #     data = dense_embeddings[sample].mean(dim=0).cpu().float().detach().numpy()
-        #     # Plot as a heatmap
-        #     plt.figure(figsize=(10, 4))
-        #     plt.imshow(data, aspect='auto', cmap='viridis')
-        #     plt.colorbar()
-        #     plt.title('dense_embeddings Heatmap')
-        #     plt.xlabel('Feature dimension (256)')
-        #     plt.ylabel('Batch or sequence dimension (16)')
-        #     plt.savefig('tensor_heatmap_dense_embeddings' + str(sample) + '.png', bbox_inches='tight', dpi=100)
-        #     plt.close()
-        
-
-        
-        # time.sleep(1000000)
         if mask_inputs is not None and is_init_cond_frame:
             dense_embeddings_input = dense_embeddings_pred
             sparse_embeddings_input = sparse_embeddings_pred
@@ -466,6 +435,39 @@ class SAM2Base(torch.nn.Module):
             mask_resized = F.interpolate(mask, size=mask_inputs_pred.shape[-2:], mode='bilinear', align_corners=False)
             embedding_loss = structure_loss(mask_inputs_pred, mask_resized, loss_on_multimask=False)
             
+
+            # save the dense_embeddings_gt and dense_embeddings for debug visualization (discard, predict mask in the middle directly)
+            # for sample in range(B):
+            #     data = dense_embeddings_input[sample].mean(dim=0).cpu().float().detach().numpy()
+            #     plt.colorbar()
+            #     plt.title('dense_embeddings_pred')
+            #     plt.savefig('dense_embeddings_pred'+ str(sample) + '.png', bbox_inches='tight', dpi=100)
+            #     plt.close()
+
+            # for sample in range(B):
+            #     data = dense_embeddings_gt[sample].mean(dim=0).cpu().float().detach().numpy()
+            #     plt.colorbar()
+            #     plt.title('dense_embeddings_gt')
+            #     plt.savefig('dense_embeddings_gt' + str(sample) + '.png', bbox_inches='tight', dpi=100)
+            #     plt.close()
+
+            # for sample in range(B):
+            #     data = mask_inputs_pred[sample].mean(dim=0).cpu().float().detach().numpy()
+            #     plt.colorbar()
+            #     plt.title('mask_pred')
+            #     plt.savefig('mask_pred'+ str(sample) + '.png', bbox_inches='tight', dpi=100)
+            #     plt.close()
+
+            # for sample in range(B):
+            #     data = sam_mask_prompt[sample].mean(dim=0).cpu().float().detach().numpy()
+            #     plt.colorbar()
+            #     plt.title('mask_gt')
+            #     plt.savefig('mask_gt' + str(sample) + '.png', bbox_inches='tight', dpi=100)
+            #     plt.close()
+            
+            # print('done')
+            # time.sleep(1000000)
+            
             
         else:
             dense_embeddings_input = dense_embeddings_gt
@@ -473,8 +475,6 @@ class SAM2Base(torch.nn.Module):
             
             embedding_loss = torch.zeros([], device=mask_inputs_pred.device, requires_grad=True)
 
-        # print('embedding_loss', embedding_loss)
-        
         (
             low_res_multimasks,
             ious,
