@@ -317,11 +317,16 @@ class EmbeddingGenerator(nn.Module):
         region_attention_3 = torch.sigmoid(self.region_attention['scale3'](features))
         region_attention = (0.5 * region_attention_1 + 0.3 * region_attention_2 + 0.2 * region_attention_3)
         
+
         # Boundary-aware attention and motion consistency
         boundary_map = self.boundary_attention(features)
         region_enhanced_features = features * region_attention
         boundary_enhanced_features = region_enhanced_features * boundary_map
-                
+        
+        print('features.shape', features.shape)
+        print('boundary_map.shape', boundary_map.shape)
+        print('region_attention.shape', region_attention.shape)
+        print('boundary_enhanced_features.shape', boundary_enhanced_features.shape)
         # ----------------------------
         # Hierarchical Mask Prediction
         # ----------------------------
@@ -339,7 +344,8 @@ class EmbeddingGenerator(nn.Module):
         mask_level2 = self.mask_refiner_level2(features_level2)
         
         # Enhance edges for a crisper final mask
-        final_mask = self._enhace_edges(mask_level2)
+        # final_mask = self._enhace_edges(mask_level2)
+        final_mask = mask_level2
 
         return final_mask  # Expected shape: [B, 1, 256, 256]
     

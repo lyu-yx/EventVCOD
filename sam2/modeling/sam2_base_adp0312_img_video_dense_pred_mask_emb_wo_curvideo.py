@@ -462,7 +462,7 @@ class SAM2Base(torch.nn.Module):
             )
 
             # loss related
-            embedding_loss = torch.zeros([], device=mask_inputs_pred.device, requires_grad=True)
+            embedding_loss = torch.zeros([], device=dense_embeddings_input.device, requires_grad=True)
         
         
 
