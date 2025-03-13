@@ -399,44 +399,29 @@ class SAM2Base(torch.nn.Module):
                 )
             else:
                 sam_mask_prompt = mask_inputs
-            
-        else:
-            sam_mask_prompt = None
-        
-        # compute embedding for all condition but deliver dense embedding for the initial frame only
-        mask_inputs_pred = self.embedding_generator(
-            backbone_features, 
-            event_features, 
-            high_res_features, 
-            high_res_event_features,
-        )
 
-
-        sparse_embeddings_gt, dense_embeddings_gt = self.sam_prompt_encoder(
-                points=(sam_point_coords, sam_point_labels),
-                boxes=None,
-                masks=sam_mask_prompt,
+            # mask prediction
+            mask_inputs_pred = self.embedding_generator(
+                backbone_features, 
+                event_features, 
+                high_res_features, 
+                high_res_event_features,
             )
-
-        sparse_embeddings_pred, dense_embeddings_pred = self.sam_prompt_encoder(
+            
+            sparse_embeddings_input, dense_embeddings_input = self.sam_prompt_encoder(
                 points=(sam_point_coords, sam_point_labels),
                 boxes=None,
                 masks=mask_inputs_pred,
             )
-        
 
-        if mask_inputs is not None and is_init_cond_frame:
-            dense_embeddings_input = dense_embeddings_pred
-            sparse_embeddings_input = sparse_embeddings_pred
-
+            # loss related
             mask = mask_inputs.float()
-            # this loss should work for all frame
 
             mask_resized = F.interpolate(mask, size=mask_inputs_pred.shape[-2:], mode='bilinear', align_corners=False)
             embedding_loss = structure_loss(mask_inputs_pred, mask_resized, loss_on_multimask=False)
-            
 
-            # save the dense_embeddings_gt and dense_embeddings for debug visualization (discard, predict mask in the middle directly)
+
+            # debug visualization (discard, predict mask in the middle directly)
             # for sample in range(B):
             #     data = dense_embeddings_input[sample].mean(dim=0).cpu().float().detach().numpy()
             #     plt.colorbar()
@@ -468,12 +453,18 @@ class SAM2Base(torch.nn.Module):
             # print('done')
             # time.sleep(1000000)
             
-            
         else:
-            dense_embeddings_input = dense_embeddings_gt
-            sparse_embeddings_input = sparse_embeddings_gt
-            
+            sam_mask_prompt = None
+            sparse_embeddings_input, dense_embeddings_input = self.sam_prompt_encoder(
+                points=(sam_point_coords, sam_point_labels),
+                boxes=None,
+                masks=sam_mask_prompt,
+            )
+
+            # loss related
             embedding_loss = torch.zeros([], device=mask_inputs_pred.device, requires_grad=True)
+        
+        
 
         (
             low_res_multimasks,

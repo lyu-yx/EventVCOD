@@ -280,8 +280,7 @@ class EmbeddingGenerator(nn.Module):
         # Process backbone and event features
         backbone_processed = self.backbone_block(backbone_features)
         event_processed = self.event_block(event_features)
-        motion_map = self.motion_attention(event_features)
-        event_enhanced = event_processed * motion_map
+
 
         # Process and align high-res backbone features
         aligned_backbone = []
@@ -306,7 +305,7 @@ class EmbeddingGenerator(nn.Module):
         fused_highres = self.highres_fusion(highres_combined)
 
         # Combine all features (with a slight weighting for event cues)
-        combined_features = backbone_processed + 0.3 * event_enhanced + fused_highres
+        combined_features = backbone_processed + 0.3 * event_processed + fused_highres
 
         # Apply channel and spatial attention
         features = self.channel_attention(combined_features)
@@ -320,19 +319,17 @@ class EmbeddingGenerator(nn.Module):
         
         # Boundary-aware attention and motion consistency
         boundary_map = self.boundary_attention(features)
-        motion_consistency = torch.sigmoid(motion_map)
         region_enhanced_features = features * region_attention
         boundary_enhanced_features = region_enhanced_features * boundary_map
-        motion_enhanced_features = boundary_enhanced_features * motion_consistency
                 
         # ----------------------------
         # Hierarchical Mask Prediction
         # ----------------------------
         # Level 1: Predict a coarse mask
-        mask_level1 = self.mask_predictor_level1(motion_enhanced_features)
+        mask_level1 = self.mask_predictor_level1(boundary_enhanced_features)
         
         # Hierarchical fusion: Concatenate the coarse mask with the original features
-        combined_input_level2 = torch.cat([motion_enhanced_features, mask_level1], dim=1)
+        combined_input_level2 = torch.cat([boundary_enhanced_features, mask_level1], dim=1)
 
         mask_level2_upsampled = F.interpolate(combined_input_level2, size=(256, 256), mode='bilinear', align_corners=False)
         
