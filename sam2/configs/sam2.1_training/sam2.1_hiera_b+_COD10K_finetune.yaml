@@ -204,7 +204,7 @@ trainer:
         transforms: ${vos.train_transforms}
         training: true
         video_dataset:
-          _target_: training.dataset.vos_raw_dataset.COD10KDatasetwoEvent
+          _target_: training.dataset.vos_raw_dataset.COD10KDataset
           img_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
           gt_folder: /scratch/hp2173/EventVCOD/dataset/TrainDataset/video_format_COD/
           # file_list_txt: ${path_to_train_filelist} # Optional
