@@ -11,6 +11,9 @@ scratch:
   finer_lr: 1.0e-4
   phases_per_epoch: 1
   num_epochs: 300
+  lr_step1: 3.0e-5
+  lr_step2: 1.0e-5
+  lr_step3: 1.0e-6
 
 dataset:
   img_multiplier: 1
@@ -307,7 +310,7 @@ trainer:
             start_value: ${scratch.base_lr}
             end_value: ${divide:${scratch.base_lr},10}
             _target_: fvcore.common.param_scheduler.MultiStepParamScheduler
-            values: [${divide:${scratch.base_lr}, 10}, ${divide:${scratch.base_lr}, 20}, ${divide:${scratch.base_lr}, 50}]
+            values: [${scratch.lr_step1}, ${scratch.lr_step2}, ${scratch.lr_step3}]
             milestones: [150, 200]  # Decay LR at epoch 120 and 150
             lengths: [100, 9999]  # First scheduler (cosine) runs for 100 epochs
             interval_scaling: "fixed"
