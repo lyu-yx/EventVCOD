@@ -468,11 +468,19 @@ class EmbeddingGenerator(nn.Module):
         # Add positional encoding
         transformed_features = transformed_features + self.position_encoding
         
+        highres_fused = F.interpolate(highres_fused, size=backbone_processed.shape[-2:], mode='bilinear', align_corners=False)
+        
         # Integrate all features
+        # print("backbone_processed", backbone_processed.shape)
+        # print("event_processed", event_processed.shape)
+        # print("highres_fused", highres_fused.shape)
+        
         integrated_features = self.feature_integration(torch.cat([
             backbone_processed, event_processed, highres_fused
         ], dim=1))
         
+        
+
         # Generate final mask with cascaded refinement
         pred_mask = self.mask_decoder(integrated_features, self.input_image_size)
         
