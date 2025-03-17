@@ -10,7 +10,7 @@ scratch:
   base_lr: 3.0e-4
   finer_lr: 1.0e-4
   phases_per_epoch: 1
-  num_epochs: 300
+  num_epochs: 80
 
 dataset:
   img_multiplier: 1
@@ -60,7 +60,7 @@ trainer:
   seed_value: 123
 
   model:
-    _target_: training.model.sam2_vcod_dense_emb0312_img_video_dense_pred_mask_emb_wo_curvideo.SAM2TrainVCODPromptGenerator
+    _target_: training.model.sam2_vcod_dense_emb0317_wo_curvideo2.SAM2TrainVCODPromptGenerator
     image_encoder:
       _target_: sam2.modeling.backbones.image_encoder.ImageEncoder
       scalp: 1
@@ -378,7 +378,7 @@ trainer:
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0315_video_dense_pred_mask_emb_wo_curvideo_ini1/checkpoints/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0317_p2_revise/checkpoints/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
