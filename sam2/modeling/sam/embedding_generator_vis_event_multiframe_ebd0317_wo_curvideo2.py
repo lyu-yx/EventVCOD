@@ -118,7 +118,15 @@ class DeformableConvolution(nn.Module):
         # For a full implementation, consider using external libraries with deformable conv support
         return self.conv(x)
 
+class PositionEmbeddingRandom(nn.Module):
+    def __init__(self, num_pos_feats: int = 64):
+        super().__init__()
+        self.num_pos_feats = num_pos_feats
 
+    def forward(self, shape: Tuple[int, int]) -> torch.Tensor:
+        h, w = shape
+        return torch.rand(self.num_pos_feats * 2, h, w)
+    
 class EventVisionFusion(nn.Module):
     """Advanced fusion module for event and vision features"""
     def __init__(self, channels, norm_layer=lambda num_channels: nn.GroupNorm(8, num_channels)):
@@ -355,7 +363,7 @@ class EmbeddingGenerator(nn.Module):
         self.embed_dim = embed_dim
         self.image_embedding_size = image_embedding_size
         self.input_image_size = input_image_size
-        
+        self.pe_layer = PositionEmbeddingRandom(embed_dim // 2)
         # Feature Processing with BiFPN for multi-resolution features
         self.bifpn = BiFPNLayer([32, 64, mask_in_chans], 256, norm_layer)
         
@@ -479,10 +487,8 @@ class EmbeddingGenerator(nn.Module):
             backbone_processed, event_processed, highres_fused
         ], dim=1))
         
-        
-
         # Generate final mask with cascaded refinement
-        pred_mask = self.mask_decoder(integrated_features, self.input_image_size)
+        pred_mask = self.mask_decoder(integrated_features, (256, 256))
         
         return pred_mask
     
