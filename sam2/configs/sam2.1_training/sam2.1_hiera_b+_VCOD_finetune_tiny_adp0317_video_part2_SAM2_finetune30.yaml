@@ -372,13 +372,13 @@ trainer:
 
       state_dict:
         _target_: training.utils.checkpoint_utils.load_checkpoint_and_apply_kernels
-        checkpoint_path: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_COD10K_finetune/checkpoints/checkpoint_50.pt # PATH to SAM 2.1 checkpoint
+        checkpoint_path: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_COD10K_finetune/checkpoints/checkpoint_30.pt # PATH to SAM 2.1 checkpoint
         ckpt_state_dict_keys: ['model']
 
 launcher:
   num_nodes: 1
   gpus_per_node: 8
-  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0317_SAM2_finetune50/   # Path to log directory, defaults to ./sam2_logs/${config_name}
+  experiment_log_dir: /scratch/hp2173/EventVCOD/save/sam2.1_hiera_b+_dense_0317_SAM2_finetune30/   # Path to log directory, defaults to ./sam2_logs/${config_name}
 
 # SLURM args if running on a cluster
 submitit:
