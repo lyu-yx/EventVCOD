@@ -285,12 +285,12 @@ def load_video_frames_and_events_from_jpg_images(
     frame_names = [
         p
         for p in os.listdir(frame_folder)
-        if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
+        if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG", ".png"]
     ]
     event_names = [
         p
         for p in os.listdir(event_folder)
-        if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
+        if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG", ".png"]
     ]
 
     frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
