@@ -98,7 +98,7 @@ def process_frames(directory, save_path):
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    directory = 'D:/Dateset/MoCA-Mask-Pseudo/MoCA-Video-Train'  # Update this path
+    directory = 'D:\Dateset\CAD2016_GT'  # Update this path
     moca_list = os.listdir(directory)
     
     for curr_dir in tqdm(moca_list):

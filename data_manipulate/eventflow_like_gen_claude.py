@@ -384,8 +384,8 @@ def create_redblue_visualization(positive_event: np.ndarray, negative_event: np.
 
 def save_images_with_padding(sequence_path: str, output_base: str, file_extension: str = '.png') -> None:
     """
-    Process and save images with proper numerical padding and add blank frame.
-    
+    Process and save images with renaming (starting from 00000, 00005, 00010...) and padding with a blank frame.
+
     Args:
         sequence_path: Path to input sequence directory
         output_base: Base path for output files
@@ -396,8 +396,9 @@ def save_images_with_padding(sequence_path: str, output_base: str, file_extensio
         output_base = Path(output_base)
         pos_path = output_base / 'positive'
         neg_path = output_base / 'negative'
-        redblue_path = output_base / 'redblue'
-        # print(pos_path)# Create directories if they don't exist
+        redblue_path = output_base / 'Eventflow_new'
+        
+        # Create directories if they don't exist
         redblue_path.mkdir(parents=True, exist_ok=True)
         
         # Get sorted list of frame files (assuming they match in positive and negative directories)
@@ -406,9 +407,9 @@ def save_images_with_padding(sequence_path: str, output_base: str, file_extensio
         
         if len(pos_files) != len(neg_files):
             raise ValueError("Number of positive and negative event files don't match")
-            
+        
         # Process each pair of files
-        for idx, (pos_file, neg_file) in enumerate(tqdm(zip(pos_files, neg_files))):
+        for pos_file, neg_file in tqdm(zip(pos_files, neg_files), total=len(pos_files)):
             # Read event images
             pos_event = cv2.imread(str(pos_file), cv2.IMREAD_GRAYSCALE)
             neg_event = cv2.imread(str(neg_file), cv2.IMREAD_GRAYSCALE)
@@ -420,15 +421,17 @@ def save_images_with_padding(sequence_path: str, output_base: str, file_extensio
             # Create visualization
             redblue_img = create_redblue_visualization(pos_event, neg_event)
             
-            # Save with padded numbering (00000, 00001, etc.)
-            output_filename = f"{idx:05d}{file_extension}"
-            output_path = redblue_path / output_filename
+            # Use the original name from the positive folder, but shift naming to start from 00000
+            original_name = pos_file.name
+            new_name = f"{int(original_name.split('.')[0]) - int(pos_files[0].stem) + 1:05d}{file_extension}"
+            output_path = redblue_path / new_name
             cv2.imwrite(str(output_path), redblue_img)
         
-        # Add blank frame at the end
-        blank_frame = np.zeros((pos_event.shape[0], pos_event.shape[1], 3), dtype=np.uint8)
-        blank_filename = f"{len(pos_files):05d}{file_extension}"
-        cv2.imwrite(str(redblue_path / blank_filename), blank_frame)
+        # Add blank frame using the last filename from positive directory
+        if pos_files:
+            last_filename = pos_files[-1].name
+            blank_frame = np.zeros((pos_event.shape[0], pos_event.shape[1], 3), dtype=np.uint8)
+            cv2.imwrite(str(redblue_path / last_filename), blank_frame)
         
         logging.info(f"Saved {len(pos_files) + 1} frames (including blank frame) to {redblue_path}")
         
@@ -464,8 +467,8 @@ def process_dataset_with_visualization(
 
 if __name__ == "__main__":
     # Configuration
-    INPUT_DIR = "D:\Dateset\MoCA-Mask-Pseudo/MoCA-Video-Test"  # Update this
-    OUTPUT_DIR = "datasets/MoCA-Video-Test_event"       # Update this
+    INPUT_DIR = "D:\Dateset\CAD2016_Processed"  # Update this
+    OUTPUT_DIR = "D:\Dateset\CAD2016_Processed"       # Update this
     NUM_WORKERS = 12                    # Adjust based on your CPU
     DEBUG_MODE = True                   # Set to True to save debug visualizations
     
@@ -483,7 +486,7 @@ if __name__ == "__main__":
         save_images_with_padding(
         sequence_path=INPUT_DIR / seq_dir,
         output_base=  seq_dir,
-        file_extension = '.jpg'
+        file_extension = '.png'
         )
         
     # Or use the complete dataset processing
