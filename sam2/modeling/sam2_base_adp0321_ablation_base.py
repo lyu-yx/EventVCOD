@@ -973,11 +973,11 @@ class SAM2Base(torch.nn.Module):
            
             sam_outputs, embedding_loss = self._forward_sam_heads(
                 backbone_features=pix_feat,
-                event_features=pix_feat_short_long,
+                event_features=pix_feat,
                 point_inputs=point_inputs,
                 mask_inputs=mask_inputs,
                 high_res_features=high_res_features_adp,
-                high_res_event_features=high_res_event_features_adp,
+                high_res_event_features=high_res_features_adp,
                 multimask_output=multimask_output,
                 is_init_cond_frame=is_init_cond_frame,
             )
