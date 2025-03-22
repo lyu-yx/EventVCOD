@@ -9,8 +9,7 @@ scratch:
   larger_lr: 5.0e-4
   base_lr: 3.0e-4
   finer_lr: 1.0e-4
-  phases_per_epoch: 1
-  num_epochs: 30
+  phases_per_epoch: 80
 
 dataset:
   img_multiplier: 1
