@@ -951,7 +951,7 @@ class Trainer:
         
         loss_all = loss
 
-        loss = embedding_loss * 1.5 +  structure_loss + loss_all
+        loss = embedding_loss  +  0.5 * structure_loss + loss_all
 
         print(f'embedding_loss * 1.5: {embedding_loss * 1.5}, structure_loss: {structure_loss}, loss_all: {loss_all}, loss: {loss}')
 
