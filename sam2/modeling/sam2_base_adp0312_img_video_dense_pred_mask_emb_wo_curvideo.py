@@ -422,12 +422,13 @@ class SAM2Base(torch.nn.Module):
 
 
             # debug visualization (discard, predict mask in the middle directly)
-            # for sample in range(B):
-            #     data = dense_embeddings_input[sample].mean(dim=0).cpu().float().detach().numpy()
-            #     plt.colorbar()
-            #     plt.title('dense_embeddings_pred')
-            #     plt.savefig('dense_embeddings_pred'+ str(sample) + '.png', bbox_inches='tight', dpi=100)
-            #     plt.close()
+            for sample in range(B):
+                data = dense_embeddings_input[sample].mean(dim=0).cpu().float().detach().numpy()
+                plt.imshow(data, cmap='viridis')
+                plt.colorbar()
+                plt.title('dense_embeddings_pred')
+                plt.savefig('dense_embeddings_pred'+ str(sample) + '.png', bbox_inches='tight', dpi=100)
+                plt.close()
 
             # for sample in range(B):
             #     data = dense_embeddings_gt[sample].mean(dim=0).cpu().float().detach().numpy()
@@ -436,12 +437,13 @@ class SAM2Base(torch.nn.Module):
             #     plt.savefig('dense_embeddings_gt' + str(sample) + '.png', bbox_inches='tight', dpi=100)
             #     plt.close()
 
-            # for sample in range(B):
-            #     data = mask_inputs_pred[sample].mean(dim=0).cpu().float().detach().numpy()
-            #     plt.colorbar()
-            #     plt.title('mask_pred')
-            #     plt.savefig('mask_pred'+ str(sample) + '.png', bbox_inches='tight', dpi=100)
-            #     plt.close()
+            for sample in range(B):
+                data = mask_inputs_pred[sample].mean(dim=0).cpu().float().detach().numpy()
+                plt.imshow(data, cmap='viridis')
+                plt.colorbar()
+                plt.title('mask_pred')
+                plt.savefig('mask_pred'+ str(sample) + '.png', bbox_inches='tight', dpi=100)
+                plt.close()
 
             # for sample in range(B):
             #     data = sam_mask_prompt[sample].mean(dim=0).cpu().float().detach().numpy()
@@ -449,8 +451,10 @@ class SAM2Base(torch.nn.Module):
             #     plt.title('mask_gt')
             #     plt.savefig('mask_gt' + str(sample) + '.png', bbox_inches='tight', dpi=100)
             #     plt.close()
+
+           
             
-            # print('done')
+            print('done')
             # time.sleep(1000000)
             
         else:
@@ -966,6 +970,22 @@ class SAM2Base(torch.nn.Module):
                 num_frames=num_frames,
                 track_in_reverse=track_in_reverse,
             )
+
+            for sample in range(B):
+                data = pix_feat[sample].mean(dim=0).cpu().float().detach().numpy()
+                plt.imshow(data, cmap='viridis')
+                plt.colorbar()
+                plt.title('pix_feat')
+                plt.savefig('pix_feat'+ str(sample) + str(frame_idx) + '.png', bbox_inches='tight', dpi=100)
+                plt.close()
+
+            for sample in range(B):
+                data = pix_feat[sample].mean(dim=0).cpu().float().detach().numpy()
+                plt.imshow(data, cmap='viridis')
+                plt.colorbar()
+                plt.title('pix_feat_short_long')
+                plt.savefig('pix_feat_short_long'+ str(sample) + str(frame_idx) + '.png', bbox_inches='tight', dpi=100)
+                plt.close()
 
             # adding adaptors to the mem part
             # pix_feat = self.mem_pix_feat_adp(pix_feat)
