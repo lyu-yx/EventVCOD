@@ -230,7 +230,7 @@ class VCODDataset(VOSRawDataset):
         video_mask_root = os.path.join(self.gt_folder, video_name, 'GT')
         
         # negative, postive or red_blue_visualization
-        video_eventflow_root = os.path.join(self.eventflow_folder, video_name, 'redblue')
+        video_eventflow_root = os.path.join(self.eventflow_folder, video_name)
 
         if self.is_palette:
             segment_loader = PalettisedPNGSegmentLoader(video_mask_root)
@@ -338,7 +338,7 @@ class VCODDatasetMoCA(VOSRawDataset):
         video_mask_root = os.path.join(self.gt_folder, video_name, 'GT')
         
         # negative, postive or red_blue_visualization
-        video_eventflow_root = os.path.join(self.eventflow_folder, video_name, 'redblue')
+        video_eventflow_root = os.path.join(self.eventflow_folder, video_name)
 
         if self.is_palette:
             segment_loader = PalettisedPNGSegmentLoader(video_mask_root)

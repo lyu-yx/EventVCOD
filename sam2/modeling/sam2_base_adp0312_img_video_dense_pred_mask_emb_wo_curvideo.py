@@ -425,9 +425,8 @@ class SAM2Base(torch.nn.Module):
             for sample in range(B):
                 data = dense_embeddings_input[sample].mean(dim=0).cpu().float().detach().numpy()
                 plt.imshow(data, cmap='viridis')
-                plt.colorbar()
-                plt.title('dense_embeddings_pred')
-                plt.savefig('dense_embeddings_pred'+ str(sample) + '.png', bbox_inches='tight', dpi=100)
+                plt.axis('off')
+                plt.savefig('dense_embeddings_pred'+ str(sample) + '.png', bbox_inches='tight', pad_inches=0, dpi=100)
                 plt.close()
 
             # for sample in range(B):
@@ -440,9 +439,8 @@ class SAM2Base(torch.nn.Module):
             for sample in range(B):
                 data = mask_inputs_pred[sample].mean(dim=0).cpu().float().detach().numpy()
                 plt.imshow(data, cmap='viridis')
-                plt.colorbar()
-                plt.title('mask_pred')
-                plt.savefig('mask_pred'+ str(sample) + '.png', bbox_inches='tight', dpi=100)
+                plt.axis('off')
+                plt.savefig('mask_pred'+ str(sample) + '.png', bbox_inches='tight', pad_inches=0, dpi=100)
                 plt.close()
 
             # for sample in range(B):
@@ -714,13 +712,17 @@ class SAM2Base(torch.nn.Module):
                     # frames, we still attend to it as if it's a non-conditioning frame.
                     out = unselected_cond_outputs.get(prev_frame_idx, None)
                 t_pos_and_prevs.append((t_pos, out))
-
+            
+            print('len t_pos_and_prevs', len(t_pos_and_prevs))
             for t_pos, prev in t_pos_and_prevs:
                 if prev is None:
                     continue  # skip padding frames
                 # "maskmem_features" might have been offloaded to CPU in demo use cases,
                 # so we load it back to GPU (it's a no-op if it's already on GPU).
                 feats = prev["maskmem_features"].to(device, non_blocking=True)
+
+                print('feats.shape', feats.shape)
+
                 to_cat_memory.append(feats.flatten(2).permute(2, 0, 1))
                 # Spatial positional encoding (it might have been offloaded to CPU in eval)
                 maskmem_enc = prev["maskmem_pos_enc"][-1].to(device)
@@ -790,6 +792,17 @@ class SAM2Base(torch.nn.Module):
                         obj_ptrs = obj_ptrs.permute(0, 2, 1, 3).flatten(0, 1)
                         obj_pos = obj_pos.repeat_interleave(C // self.mem_dim, dim=0)
                     to_cat_memory.append(obj_ptrs)
+
+
+                    
+                    data = obj_ptrs[-4:].view(-1).view(16, 16).cpu().float().detach().numpy()
+                    plt.imshow(data, cmap='viridis')
+                    plt.axis('off')
+                    plt.savefig('obj_ptrs'+ str(frame_idx) + '.png', bbox_inches='tight', pad_inches=0, dpi=100)
+                    plt.close()
+
+
+                    print('obj_ptrs.shape', obj_ptrs.shape)
                     to_cat_memory_pos_embed.append(obj_pos)
                     num_obj_ptr_tokens = obj_ptrs.shape[0]
                 else:
@@ -816,8 +829,8 @@ class SAM2Base(torch.nn.Module):
         memory = torch.cat(to_cat_memory, dim=0)
         memory_pos_embed = torch.cat(to_cat_memory_pos_embed, dim=0)
         
-        # print('memory.shape', memory.shape)
-        # print('current_vision_feats[0].shape', current_vision_feats[0].shape)
+        print('memory.shape', memory.shape)
+        print('current_vision_feats[0].shape', current_vision_feats[0].shape)
        
 
         pix_feat_with_mem = self.memory_attention(
@@ -974,17 +987,15 @@ class SAM2Base(torch.nn.Module):
             for sample in range(B):
                 data = pix_feat[sample].mean(dim=0).cpu().float().detach().numpy()
                 plt.imshow(data, cmap='viridis')
-                plt.colorbar()
-                plt.title('pix_feat')
-                plt.savefig('pix_feat'+ str(sample) + str(frame_idx) + '.png', bbox_inches='tight', dpi=100)
+                plt.axis('off')
+                plt.savefig('pix_feat'+ str(sample) + str(frame_idx) + '.png', bbox_inches='tight', pad_inches=0, dpi=100)
                 plt.close()
 
             for sample in range(B):
-                data = pix_feat[sample].mean(dim=0).cpu().float().detach().numpy()
+                data = pix_feat_short_long[sample].mean(dim=0).cpu().float().detach().numpy()
                 plt.imshow(data, cmap='viridis')
-                plt.colorbar()
-                plt.title('pix_feat_short_long')
-                plt.savefig('pix_feat_short_long'+ str(sample) + str(frame_idx) + '.png', bbox_inches='tight', dpi=100)
+                plt.axis('off')
+                plt.savefig('pix_feat_short_long'+ str(sample) + str(frame_idx) + '.png', bbox_inches='tight', pad_inches=0, dpi=100)
                 plt.close()
 
             # adding adaptors to the mem part
