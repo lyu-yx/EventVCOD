@@ -254,7 +254,7 @@ trainer:
           _target_: training.dataset.vos_raw_dataset.VCODDatasetMoCA
           img_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
           gt_folder: /scratch/hp2173/EventVCOD/datasets/MoCA-Mask/MoCA_Video/TrainDataset_per_sq/
-          eventflow_folder: scratch/hp2173/EventVCOD/datasets/events_safe_mt/black_png_output/training/
+          eventflow_folder: /scratch/hp2173/EventVCOD/datasets/events_safe_mt/black_png_output/training/
           # file_list_txt: None
           # ann_every: 4
         sampler:
