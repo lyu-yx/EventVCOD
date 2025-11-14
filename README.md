@@ -1,206 +1,315 @@
-# SAM 2: Segment Anything in Images and Videos
+# EventVCOD: Towards Explainable Video Camouflaged Object Detection
 
-**[AI at Meta, FAIR](https://ai.meta.com/research/)**
+[![Paper](https://img.shields.io/badge/Paper-AAAI%202026-blue)](./assets/Towards_Explainable_Video_Camouflaged_Object_Detection__SAM2_with_Eventstream_Inspired_Data_AAAI_26.pdf)
+[![Supp](https://img.shields.io/badge/Supplementary-Material-orange)](./assets/Towards_Explainable_Video_Camouflaged_Object_Detection__SAM2_with_Eventstream_Inspired_Data_Supp_AAAI_26.pdf)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
-[Nikhila Ravi](https://nikhilaravi.com/), [Valentin Gabeur](https://gabeur.github.io/), [Yuan-Ting Hu](https://scholar.google.com/citations?user=E8DVVYQAAAAJ&hl=en), [Ronghang Hu](https://ronghanghu.com/), [Chaitanya Ryali](https://scholar.google.com/citations?user=4LWx24UAAAAJ&hl=en), [Tengyu Ma](https://scholar.google.com/citations?user=VeTSl0wAAAAJ&hl=en), [Haitham Khedr](https://hkhedr.com/), [Roman Rädle](https://scholar.google.de/citations?user=Tpt57v0AAAAJ&hl=en), [Chloe Rolland](https://scholar.google.com/citations?hl=fr&user=n-SnMhoAAAAJ), [Laura Gustafson](https://scholar.google.com/citations?user=c8IpF9gAAAAJ&hl=en), [Eric Mintun](https://ericmintun.github.io/), [Junting Pan](https://junting.github.io/), [Kalyan Vasudev Alwala](https://scholar.google.co.in/citations?user=m34oaWEAAAAJ&hl=en), [Nicolas Carion](https://www.nicolascarion.com/), [Chao-Yuan Wu](https://chaoyuan.org/), [Ross Girshick](https://www.rossgirshick.info/), [Piotr Dollár](https://pdollar.github.io/), [Christoph Feichtenhofer](https://feichtenhofer.github.io/)
+Official implementation of **"Towards Explainable Video Camouflaged Object Detection: SAM2 with Eventstream-Inspired Data"** (AAAI 2026).
 
-[[`Paper`](https://ai.meta.com/research/publications/sam-2-segment-anything-in-images-and-videos/)] [[`Project`](https://ai.meta.com/sam2)] [[`Demo`](https://sam2.metademolab.com/)] [[`Dataset`](https://ai.meta.com/datasets/segment-anything-video)] [[`Blog`](https://ai.meta.com/blog/segment-anything-2)] [[`BibTeX`](#citing-sam-2)]
+## 📋 Overview
 
-![SAM 2 architecture](assets/model_diagram.png?raw=true)
+EventVCOD introduces a novel framework for Video Camouflaged Object Detection (VCOD) by leveraging **event camera-inspired data** and **Segment Anything Model 2 (SAM2)**. Our approach provides explainable detection through event-based motion representations that capture temporal dynamics invisible to standard RGB cameras.
 
-**Segment Anything Model 2 (SAM 2)** is a foundation model towards solving promptable visual segmentation in images and videos. We extend SAM to video by considering images as a video with a single frame. The model design is a simple transformer architecture with streaming memory for real-time video processing. We build a model-in-the-loop data engine, which improves model and data via user interaction, to collect [**our SA-V dataset**](https://ai.meta.com/datasets/segment-anything-video), the largest video segmentation dataset to date. SAM 2 trained on our data provides strong performance across a wide range of tasks and visual domains.
+<p align="center">
+  <img src="./assets/Overall_pipline.png" alt="EventVCOD Pipeline" width="90%">
+</p>
 
-![SA-V dataset](assets/sa_v_dataset.jpg?raw=true)
+### Key Features
 
-## Installation
+- 🎯 **SAM2-based Architecture**: Fine-tuned SAM2 with custom prompt generators for VCOD
+- ⚡ **Event-Inspired Data**: Novel eventstream-like representation from RGB videos
+- 🎬 **Video Understanding**: Temporal coherence through event polarity (+/-) encoding
+- 🔍 **Explainable Detection**: Motion-based interpretable features
+- 📊 **State-of-the-art Performance**: Superior results on MoCA-Mask-Video and CAD-2016 benchmarks
 
-SAM 2 needs to be installed first before use. The code requires `python>=3.10`, as well as `torch>=2.3.1` and `torchvision>=0.18.1`. Please follow the instructions [here](https://pytorch.org/get-started/locally/) to install both PyTorch and TorchVision dependencies. You can install SAM 2 on a GPU machine using:
+## 🏗️ Architecture
 
-```bash
-git clone https://github.com/facebookresearch/segment-anything-2.git
+Our framework consists of three main components:
 
-cd segment-anything-2 & pip install -e .
-```
-If you are installing on Windows, it's strongly recommended to use [Windows Subsystem for Linux (WSL)](https://learn.microsoft.com/en-us/windows/wsl/install) with Ubuntu.
+1. **Event-Inspired Data Generation**: Convert RGB frames to event-like representations with positive/negative polarities
+2. **Prompt Generator**: Dense embedding generator for SAM2 conditioning
+3. **SAM2 Backbone**: Fine-tuned image encoder with memory attention mechanism
 
-To use the SAM 2 predictor and run the example notebooks, `jupyter` and `matplotlib` are required and can be installed by:
+## 📦 Installation
 
-```bash
-pip install -e ".[notebooks]"
-```
+### Prerequisites
 
-Note:
-1. It's recommended to create a new Python environment via [Anaconda](https://www.anaconda.com/) for this installation and install PyTorch 2.3.1 (or higher) via `pip` following https://pytorch.org/. If you have a PyTorch version lower than 2.3.1 in your current environment, the installation command above will try to upgrade it to the latest PyTorch version using `pip`.
-2. The step above requires compiling a custom CUDA kernel with the `nvcc` compiler. If it isn't already available on your machine, please install the [CUDA toolkits](https://developer.nvidia.com/cuda-toolkit-archive) with a version that matches your PyTorch CUDA version.
-3. If you see a message like `Failed to build the SAM 2 CUDA extension` during installation, you can ignore it and still use SAM 2 (some post-processing functionality may be limited, but it doesn't affect the results in most cases).
+- Python 3.8+
+- CUDA 12.1+
+- PyTorch 2.3.0+
 
-Please see [`INSTALL.md`](./INSTALL.md) for FAQs on potential issues and solutions.
-
-## Getting Started
-
-### Download Checkpoints
-
-First, we need to download a model checkpoint. All the model checkpoints can be downloaded by running:
+### Setup
 
 ```bash
-cd checkpoints && \
-./download_ckpts.sh && \
-cd ..
+# Clone the repository
+git clone https://github.com/yourusername/EventVCOD.git
+cd EventVCOD
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install SAM2
+pip install -e .
 ```
 
-or individually from:
+### Dependencies
 
-- [sam2.1_hiera_tiny.pt](https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.pt)
-- [sam2.1_hiera_small.pt](https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_small.pt)
-- [sam2.1_hiera_base_plus.pt](https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_base_plus.pt)
-- [sam2.1_hiera_large.pt](https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_large.pt)
+Main dependencies include:
+- `torch>=2.3.0`
+- `torchvision>=0.18.0`
+- `opencv-python>=4.8.0`
+- `numpy>=1.24.2`
+- `Pillow>=9.4.0`
+- `tensorboardX>=2.6.2`
+- `timm==0.4.12`
 
-(note that these are the improved checkpoints denoted as SAM 2.1; see [Model Description](#model-description) for details.)
+See `requirements.txt` for complete list.
 
-(note that these are the improved checkpoints denoted as SAM 2.1; see [Model Description](#model-description) for details.)
+## 📊 Dataset Preparation
 
-Then SAM 2 can be used in a few lines as follows for image and video prediction.
+### Download Datasets
 
-### Image prediction
+All datasets and pre-processed event-like data are available at:
+- 🔗 [Baidu Netdisk](https://bhpan.buaa.edu.cn/link/AAF3D4FA7AB0C34A8DA44EFEA78DC9BC3A)
 
-SAM 2 has all the capabilities of [SAM](https://github.com/facebookresearch/segment-anything) on static images, and we provide image prediction APIs that closely resemble SAM for image use cases. The `SAM2ImagePredictor` class has an easy interface for image prompting.
+### Dataset Structure
+
+Organize your datasets as follows:
+
+```
+datasets/
+├── MoCA-Video-Train_event/
+│   ├── crab/
+│   ├── flatfish_0/
+│   └── ...
+├── MoCA-Video-Test_event/
+│   ├── arctic_fox/
+│   ├── black_cat_1/
+│   └── ...
+└── CAD2016_event/
+    └── ...
+```
+
+### Generate Event-Inspired Data
+
+To generate event-like representations from your own RGB videos:
+
+```bash
+cd data_manipulate
+python eventflow_like_gen_claude.py --input_dir /path/to/videos --output_dir /path/to/output
+```
+
+## 🎯 Pre-trained Models
+
+All pre-trained models (including SAM2 checkpoints and fine-tuned EventVCOD models) are available at:
+- 🔗 [Baidu Netdisk](https://bhpan.buaa.edu.cn/link/AAF3D4FA7AB0C34A8DA44EFEA78DC9BC3A)
+
+Download the checkpoints and place them in the `checkpoints/` directory.
+
+## 🚀 Training
+
+### Single GPU Training
+
+```bash
+python train.py --config sam2/configs/sam2.1_training/sam2.1_hiera_b+_VCOD_finetune_tiny_adp0317_video_part2_SAM2_finetune30.yaml
+```
+
+### Multi-GPU Distributed Training
+
+```bash
+# 4 GPUs example
+python -m torch.distributed.launch \
+    --nproc_per_node=4 \
+    --master_port=29500 \
+    train.py \
+    --config sam2/configs/sam2.1_training/sam2.1_hiera_b+_VCOD_finetune_tiny_adp0317_video_part2_SAM2_finetune30.yaml \
+    --name eventvcod_exp \
+    --tag experiment_v1
+```
+
+### Training Configuration
+
+Main training parameters in config files:
+- `resolution`: Input resolution (default: 1024)
+- `train_batch_size`: Batch size per GPU
+- `num_frames`: Number of frames per video clip
+- `num_epochs`: Total training epochs
+- `base_lr`: Base learning rate
+
+Modify configurations in `sam2/configs/sam2.1_training/` for different settings.
+
+## 🧪 Testing & Evaluation
+
+### Run Inference
+
+```bash
+python test.py \
+    --config sam2/configs/sam2.1/sam2.1_hiera_b+_VCOD_infer_modify.yaml \
+    --model /path/to/checkpoint.pth
+```
+
+### Evaluation Metrics
+
+We evaluate using standard VCOD metrics:
+- **S-measure (Sα)**: Structure similarity
+- **E-measure (Eφ)**: Enhanced alignment measure  
+- **weighted F-measure (Fwβ)**: Weighted precision-recall
+- **MAE (M)**: Mean Absolute Error
+- **mean Dice (mDice)**: Dice coefficient
+- **mean IoU (mIoU)**: Intersection over Union
+
+### MATLAB Evaluation
+
+For comprehensive evaluation using MATLAB:
+
+```matlab
+# For MoCA-Mask-Video dataset
+cd eval
+run main_MoCA.m
+
+# For CAD-2016 dataset
+run main_CAD.m
+```
+
+### Python Evaluation
+
+```bash
+cd eval/PySODMetrics
+python evaluate.py --pred_dir /path/to/predictions --gt_dir /path/to/ground_truth
+```
+
+## 📈 Results
+
+### MoCA-Mask-Video Test Set
+
+| Method | Sα↑ | Fwβ↑ | Eφ↑ | M↓ | mDice↑ | mIoU↑ |
+|--------|------|------|------|-----|--------|-------|
+| RCRNet | .597 | .174 | .583 | .025 | .194 | .137 |
+| PNS-Net | .576 | .134 | .536 | .038 | .189 | .133 |
+| MG | .547 | .165 | .537 | .095 | .197 | .137 |
+| SLT-Net | .656 | .357 | .785 | .021 | .387 | .310 |
+| IMEX | .661 | .371 | .778 | .020 | .409 | .319 |
+| TSP-SAM(M+P) | .673 | .400 | .766 | .012 | .421 | .345 |
+| TSP-SAM(M+B) | .689 | .444 | .808 | .008 | .458 | .388 |
+| ZoomNeXt(T=1) | .690 | .395 | .702 | .017 | .420 | .353 |
+| ZoomNeXt(T=5) | .734 | .476 | .736 | .010 | .497 | .422 |
+| EMIP | .669 | .374 | ↑ | .017 | .424 | .326 |
+| EMIP-L | .675 | .381 | ↑ | .015 | .426 | .333 |
+| **EventVCOD (Ours)** | **.753** | **.573** | **.855** | **.009** | **.574** | **.496** |
+
+### CAD-2016 Dataset
+
+| Method | Sα↑ | Fwβ↑ | Eφ↑ | M↓ | mDice↑ | mIoU↑ |
+|--------|------|------|------|-----|--------|-------|
+| RCRNet | ↑ | ↑ | ↑ | ↓ | ↑ | ↑ |
+| PNS-Net | .678 | .369 | .720 | .043 | .409 | .309 |
+| MG | .613 | .370 | .537 | .070 | .351 | .260 |
+| SLT-Net | .669 | .481 | .845 | .030 | .368 | .268 |
+| IMEX | .684 | .452 | .813 | .033 | .469 | .370 |
+| TSP-SAM(M+P) | .705 | .565 | .836 | .027 | .591 | .422 |
+| TSP-SAM(M+B) | .751 | .628 | .865 | .021 | .603 | .496 |
+| ZoomNeXt(T=1) | .721 | .525 | .759 | .024 | .523 | .436 |
+| ZoomNeXt(T=5) | .757 | .593 | .865 | .020 | .509 | .510 |
+| EMIP | .710 | .504 | ↑ | .029 | .528 | .415 |
+| EMIP-L | .719 | .514 | ↑ | .028 | .536 | .425 |
+| **EventVCOD (Ours)** | **.802** | **.717** | **.887** | **.023** | **.717** | **.615** |
+
+*Note: ↑/↓ indicates metrics not reported in original papers. Full quantitative results available in the paper.*
+
+## 🛠️ Code Structure
+
+```
+EventVCOD/
+├── sam2/                           # SAM2 core implementation
+│   ├── modeling/                   # Model architectures
+│   ├── configs/                    # Configuration files
+│   │   ├── sam2.1_training/       # Training configs
+│   │   └── ablation/              # Ablation study configs
+│   └── utils/                      # Utility functions
+├── training/                       # Training pipeline
+│   ├── trainer.py                 # Main trainer
+│   ├── trainer_supervision.py     # Supervised training
+│   └── model/                     # Model definitions
+├── datasets/                       # Dataset implementations
+│   ├── datasets.py                # Dataset loaders
+│   └── transform_custom.py        # Data augmentation
+├── data_manipulate/               # Event data generation
+│   ├── eventflow_like_gen_claude.py  # Event generation
+│   └── eventflow_p_n_visualization.ipynb  # Visualization
+├── eval/                          # Evaluation scripts
+│   ├── PySODMetrics/             # Python metrics
+│   └── *.m                       # MATLAB evaluation
+├── train.py                       # Training entry point
+├── test.py                        # Testing entry point
+└── utils.py                       # General utilities
+```
+
+## 🔬 Event-Inspired Data Generation
+
+Our event data generation process:
+
+1. **Frame Difference**: Compute temporal derivatives between consecutive frames
+2. **Polarity Assignment**: Threshold-based positive/negative event classification
+3. **Accumulation**: Aggregate events over time windows
+4. **Normalization**: Scale to appropriate intensity ranges
+
+Example usage:
 
 ```python
-import torch
-from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
+from data_manipulate.eventflow_like_gen_claude import generate_events
 
-checkpoint = "./checkpoints/sam2.1_hiera_large.pt"
-model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml"
-predictor = SAM2ImagePredictor(build_sam2(model_cfg, checkpoint))
-
-with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
-    predictor.set_image(<your_image>)
-    masks, _, _ = predictor.predict(<input_prompts>)
+events_pos, events_neg = generate_events(
+    video_path='path/to/video.mp4',
+    threshold=0.2,
+    output_dir='path/to/output'
+)
 ```
 
-Please refer to the examples in [image_predictor_example.ipynb](./notebooks/image_predictor_example.ipynb) (also in Colab [here](https://colab.research.google.com/github/facebookresearch/segment-anything-2/blob/main/notebooks/image_predictor_example.ipynb)) for static image use cases.
+See `data_manipulate/eventflow_p_n_visualization.ipynb` for visualization examples.
 
-SAM 2 also supports automatic mask generation on images just like SAM. Please see [automatic_mask_generator_example.ipynb](./notebooks/automatic_mask_generator_example.ipynb) (also in Colab [here](https://colab.research.google.com/github/facebookresearch/segment-anything-2/blob/main/notebooks/automatic_mask_generator_example.ipynb)) for automatic mask generation in images.
+## 🎓 Citation
 
-### Video prediction
-
-For promptable segmentation and tracking in videos, we provide a video predictor with APIs for example to add prompts and propagate masklets throughout a video. SAM 2 supports video inference on multiple objects and uses an inference state to keep track of the interactions in each video.
-
-```python
-import torch
-from sam2.build_sam import build_sam2_video_predictor
-
-checkpoint = "./checkpoints/sam2.1_hiera_large.pt"
-model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml"
-predictor = build_sam2_video_predictor(model_cfg, checkpoint)
-
-with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
-    state = predictor.init_state(<your_video>)
-
-    # add new prompts and instantly get the output on the same frame
-    frame_idx, object_ids, masks = predictor.add_new_points_or_box(state, <your_prompts>):
-
-    # propagate the prompts to get masklets throughout the video
-    for frame_idx, object_ids, masks in predictor.propagate_in_video(state):
-        ...
-```
-
-Please refer to the examples in [video_predictor_example.ipynb](./notebooks/video_predictor_example.ipynb) (also in Colab [here](https://colab.research.google.com/github/facebookresearch/segment-anything-2/blob/main/notebooks/video_predictor_example.ipynb)) for details on how to add click or box prompts, make refinements, and track multiple objects in videos.
-
-## Load from 🤗 Hugging Face
-
-Alternatively, models can also be loaded from [Hugging Face](https://huggingface.co/models?search=facebook/sam2) (requires `pip install huggingface_hub`).
-
-For image prediction:
-
-```python
-import torch
-from sam2.sam2_image_predictor import SAM2ImagePredictor
-
-predictor = SAM2ImagePredictor.from_pretrained("facebook/sam2-hiera-large")
-
-with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
-    predictor.set_image(<your_image>)
-    masks, _, _ = predictor.predict(<input_prompts>)
-```
-
-For video prediction:
-
-```python
-import torch
-from sam2.sam2_video_predictor import SAM2VideoPredictor
-
-predictor = SAM2VideoPredictor.from_pretrained("facebook/sam2-hiera-large")
-
-with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
-    state = predictor.init_state(<your_video>)
-
-    # add new prompts and instantly get the output on the same frame
-    frame_idx, object_ids, masks = predictor.add_new_points_or_box(state, <your_prompts>):
-
-    # propagate the prompts to get masklets throughout the video
-    for frame_idx, object_ids, masks in predictor.propagate_in_video(state):
-        ...
-```
-
-## Model Description
-
-### SAM 2.1 checkpoints
-The table below shows the improved SAM 2.1 checkpoints released on September 29, 2024.
-|      **Model**       | **Size (M)** |    **Speed (FPS)**     | **SA-V test (J&F)** | **MOSE val (J&F)** | **LVOS v2 (J&F)** |
-| :------------------: | :----------: | :--------------------: | :-----------------: | :----------------: | :---------------: |
-|   sam2.1_hiera_tiny <br /> ([config](sam2/configs/sam2.1/sam2.1_hiera_t.yaml), [checkpoint](https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.pt))    |     38.9     |          47.2          |        76.5         |        71.8        |       77.3        |
-|   sam2.1_hiera_small <br /> ([config](sam2/configs/sam2.1/sam2.1_hiera_s.yaml), [checkpoint](https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_small.pt))   |      46      | 43.3 (53.0 compiled\*) |        76.6         |        73.5        |       78.3        |
-| sam2.1_hiera_base_plus <br /> ([config](sam2/configs/sam2.1/sam2.1_hiera_b+.yaml), [checkpoint](https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_base_plus.pt)) |     80.8     | 34.8 (43.8 compiled\*) |        78.2         |        73.7        |       78.2        |
-|   sam2.1_hiera_large <br /> ([config](sam2/configs/sam2.1/sam2.1_hiera_l.yaml), [checkpoint](https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_large.pt))   |    224.4     | 24.2 (30.2 compiled\*) |        79.5         |        74.6        |       80.6        |
-
-### SAM 2 checkpoints
-The previous SAM 2 checkpoints released on July 29, 2024 can be found as follows:
-
-|      **Model**       | **Size (M)** |    **Speed (FPS)**     | **SA-V test (J&F)** | **MOSE val (J&F)** | **LVOS v2 (J&F)** |
-| :------------------: | :----------: | :--------------------: | :-----------------: | :----------------: | :---------------: |
-|   sam2_hiera_tiny <br /> ([config](sam2/configs/sam2/sam2_hiera_t.yaml), [checkpoint](https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_tiny.pt))   |     38.9     |          47.2          |        75.0         |        70.9        |       75.3        |
-|   sam2_hiera_small <br /> ([config](sam2/configs/sam2/sam2_hiera_s.yaml), [checkpoint](https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_small.pt))   |      46      | 43.3 (53.0 compiled\*) |        74.9         |        71.5        |       76.4        |
-| sam2_hiera_base_plus <br /> ([config](sam2/configs/sam2/sam2_hiera_b+.yaml), [checkpoint](https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_base_plus.pt)) |     80.8     | 34.8 (43.8 compiled\*) |        74.7         |        72.8        |       75.8        |
-|   sam2_hiera_large <br /> ([config](sam2/configs/sam2/sam2_hiera_l.yaml), [checkpoint](https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_large.pt))   |    224.4     | 24.2 (30.2 compiled\*) |        76.0         |        74.6        |       79.8        |
-
-\* Compile the model by setting `compile_image_encoder: True` in the config.
-
-## Segment Anything Video Dataset
-
-See [sav_dataset/README.md](sav_dataset/README.md) for details.
-
-## Training SAM 2
-
-You can train or fine-tune SAM 2 on custom datasets of images, videos, or both. Please check the training [README](training/README.md) on how to get started.
-
-## License
-
-The SAM 2 model checkpoints, SAM 2 demo code (front-end and back-end), and SAM 2 training code are licensed under [Apache 2.0](./LICENSE), however the [Inter Font](https://github.com/rsms/inter?tab=OFL-1.1-1-ov-file) and [Noto Color Emoji](https://github.com/googlefonts/noto-emoji) used in the SAM 2 demo code are made available under the [SIL Open Font License, version 1.1](https://openfontlicense.org/open-font-license-official-text/).
-
-## Contributing
-
-See [contributing](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md).
-
-## Contributors
-
-The SAM 2 project was made possible with the help of many contributors (alphabetical):
-
-Karen Bergan, Daniel Bolya, Alex Bosenberg, Kai Brown, Vispi Cassod, Christopher Chedeau, Ida Cheng, Luc Dahlin, Shoubhik Debnath, Rene Martinez Doehner, Grant Gardner, Sahir Gomez, Rishi Godugu, Baishan Guo, Caleb Ho, Andrew Huang, Somya Jain, Bob Kamma, Amanda Kallet, Jake Kinney, Alexander Kirillov, Shiva Koduvayur, Devansh Kukreja, Robert Kuo, Aohan Lin, Parth Malani, Jitendra Malik, Mallika Malhotra, Miguel Martin, Alexander Miller, Sasha Mitts, William Ngan, George Orlin, Joelle Pineau, Kate Saenko, Rodrick Shepard, Azita Shokrpour, David Soofian, Jonathan Torres, Jenny Truong, Sagar Vaze, Meng Wang, Claudette Ward, Pengchuan Zhang.
-
-Third-party code: we use a GPU-based connected component algorithm adapted from [`cc_torch`](https://github.com/zsef123/Connected_components_PyTorch) (with its license in [`LICENSE_cctorch`](./LICENSE_cctorch)) as an optional post-processing step for the mask predictions.
-
-## Citing SAM 2
-
-If you use SAM 2 or the SA-V dataset in your research, please use the following BibTeX entry.
+If you find this work useful, please cite:
 
 ```bibtex
-@article{ravi2024sam2,
-  title={SAM 2: Segment Anything in Images and Videos},
-  author={Ravi, Nikhila and Gabeur, Valentin and Hu, Yuan-Ting and Hu, Ronghang and Ryali, Chaitanya and Ma, Tengyu and Khedr, Haitham and R{\"a}dle, Roman and Rolland, Chloe and Gustafson, Laura and Mintun, Eric and Pan, Junting and Alwala, Kalyan Vasudev and Carion, Nicolas and Wu, Chao-Yuan and Girshick, Ross and Doll{\'a}r, Piotr and Feichtenhofer, Christoph},
-  journal={arXiv preprint arXiv:2408.00714},
-  url={https://arxiv.org/abs/2408.00714},
-  year={2024}
+@inproceedings{eventvcod2026,
+  title={Towards Explainable Video Camouflaged Object Detection: SAM2 with Eventstream-Inspired Data},
+  author={Your Name and Collaborators},
+  booktitle={AAAI Conference on Artificial Intelligence},
+  year={2026}
 }
 ```
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0 - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+This work builds upon:
+- [SAM2](https://github.com/facebookresearch/segment-anything-2) - Meta's Segment Anything Model 2
+- [MoCA-Mask](https://www.robots.ox.ac.uk/~vgg/data/MoCA-Mask/) - Video camouflaged object dataset
+- [CAD-2016](https://www.polsl.pl/rau6/datasets/) - Camouflaged animal dataset
+
+## 📧 Contact
+
+For questions and discussions:
+- Create an issue in this repository
+- Contact: [your-email@domain.com]
+
+## 🔗 Resources
+
+- 📄 [Paper PDF](./assets/Towards_Explainable_Video_Camouflaged_Object_Detection__SAM2_with_Eventstream_Inspired_Data_AAAI_26.pdf)
+- 📑 [Supplementary Material](./assets/Towards_Explainable_Video_Camouflaged_Object_Detection__SAM2_with_Eventstream_Inspired_Data_Supp_AAAI_26.pdf)
+- 💾 [Datasets & Checkpoints (Baidu Netdisk)](https://bhpan.buaa.edu.cn/link/AAF3D4FA7AB0C34A8DA44EFEA78DC9BC3A)
+- 📊 [Project Page](https://yourprojectpage.com) *(coming soon)*
+
+## 🔄 Updates
+
+- **2025-11**: Initial release with training/testing code
+- **2025-11**: Pre-trained models and event-inspired datasets released
+- **2026**: AAAI 2026 publication
+
+---
+
+**Star ⭐ this repository if you find it helpful!**
