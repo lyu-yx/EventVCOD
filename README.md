@@ -70,7 +70,7 @@ See `requirements.txt` for complete list.
 ### Download Datasets
 
 All datasets and pre-processed event-like data are available at:
-- 🔗 [Baidu Netdisk](https://bhpan.buaa.edu.cn/link/AAF3D4FA7AB0C34A8DA44EFEA78DC9BC3A)
+- 🔗 [Netdisk](https://bhpan.buaa.edu.cn/link/AAF3D4FA7AB0C34A8DA44EFEA78DC9BC3A)
 
 ### Dataset Structure
 
@@ -102,7 +102,7 @@ python eventflow_like_gen_claude.py --input_dir /path/to/videos --output_dir /pa
 ## 🎯 Pre-trained Models
 
 All pre-trained models (including SAM2 checkpoints and fine-tuned EventVCOD models) are available at:
-- 🔗 [Baidu Netdisk](https://bhpan.buaa.edu.cn/link/AAF3D4FA7AB0C34A8DA44EFEA78DC9BC3A)
+- 🔗 [Netdisk](https://bhpan.buaa.edu.cn/link/AAF3D4FA7AB0C34A8DA44EFEA78DC9BC3A)
 
 Download the checkpoints and place them in the `checkpoints/` directory.
 
@@ -267,18 +267,7 @@ events_pos, events_neg = generate_events(
 
 See `data_manipulate/eventflow_p_n_visualization.ipynb` for visualization examples.
 
-## 🎓 Citation
 
-If you find this work useful, please cite:
-
-```bibtex
-@inproceedings{eventvcod2026,
-  title={Towards Explainable Video Camouflaged Object Detection: SAM2 with Eventstream-Inspired Data},
-  author={Your Name and Collaborators},
-  booktitle={AAAI Conference on Artificial Intelligence},
-  year={2026}
-}
-```
 
 ## 📄 License
 
@@ -288,27 +277,15 @@ This project is licensed under the Apache License 2.0 - see the LICENSE file for
 
 This work builds upon:
 - [SAM2](https://github.com/facebookresearch/segment-anything-2) - Meta's Segment Anything Model 2
-- [MoCA-Mask](https://www.robots.ox.ac.uk/~vgg/data/MoCA-Mask/) - Video camouflaged object dataset
-- [CAD-2016](https://www.polsl.pl/rau6/datasets/) - Camouflaged animal dataset
 
-## 📧 Contact
 
-For questions and discussions:
-- Create an issue in this repository
-- Contact: [your-email@domain.com]
 
 ## 🔗 Resources
 
 - 📄 [Paper PDF](./assets/Towards_Explainable_Video_Camouflaged_Object_Detection__SAM2_with_Eventstream_Inspired_Data_AAAI_26.pdf)
 - 📑 [Supplementary Material](./assets/Towards_Explainable_Video_Camouflaged_Object_Detection__SAM2_with_Eventstream_Inspired_Data_Supp_AAAI_26.pdf)
-- 💾 [Datasets & Checkpoints (Baidu Netdisk)](https://bhpan.buaa.edu.cn/link/AAF3D4FA7AB0C34A8DA44EFEA78DC9BC3A)
-- 📊 [Project Page](https://yourprojectpage.com) *(coming soon)*
+- 💾 [Datasets & Checkpoints (Netdisk)](https://bhpan.buaa.edu.cn/link/AAF3D4FA7AB0C34A8DA44EFEA78DC9BC3A)
 
-## 🔄 Updates
-
-- **2025-11**: Initial release with training/testing code
-- **2025-11**: Pre-trained models and event-inspired datasets released
-- **2026**: AAAI 2026 publication
 
 ---
 
